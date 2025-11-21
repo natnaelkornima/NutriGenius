@@ -866,7 +866,7 @@ export default function NutriGenius() {
 
             <div className="space-y-3">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Primary Goal</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {GOALS.map(goal => (
                   <SelectionCard
                     key={goal.id}
