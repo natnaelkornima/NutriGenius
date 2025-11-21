@@ -306,7 +306,7 @@ const PricingView = ({ onBack, userEmail }) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          amount: plan.price,
+          amount: plan.price.toString(),
           currency: "ETB",
           email: userEmail,
           first_name: "NutriGenius",
@@ -332,7 +332,8 @@ const PricingView = ({ onBack, userEmail }) => {
         window.location.href = data.data.checkout_url;
       } else {
         console.error("Chapa failed:", data);
-        alert(`Payment initialization failed: ${data.message || JSON.stringify(data)}`);
+        // Force stringify to avoid [object Object]
+        alert(`Payment initialization failed:\n${JSON.stringify(data, null, 2)}`);
       }
     } catch (err) {
       console.error("Payment Error:", err);
