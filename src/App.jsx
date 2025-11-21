@@ -321,6 +321,12 @@ const PricingView = ({ onBack, userEmail }) => {
 
       const data = await response.json();
       if (data.status === 'success' && data.data?.checkout_url) {
+        // Store pending transaction details
+        localStorage.setItem('pending_payment', JSON.stringify({
+          tx_ref,
+          plan_id: plan.id,
+          plan_name: plan.name
+        }));
         window.location.href = data.data.checkout_url;
       } else {
         alert("Payment initialization failed. Please check your API Key in .env");
@@ -424,9 +430,36 @@ export default function NutriGenius() {
       } catch (err) { console.warn("Auth mismatch", err); }
     };
     initAuth();
-    return onAuthStateChanged(auth, (currentUser) => {
+    return onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser && !currentUser.isAnonymous) {
+
+        // --- PAYMENT VERIFICATION START ---
+        const pendingPayment = localStorage.getItem('pending_payment');
+        if (pendingPayment) {
+          const { tx_ref, plan_id, plan_name } = JSON.parse(pendingPayment);
+          // Verify with Chapa (Client-side verification for demo purposes)
+          // Note: In production, use a backend proxy to hide the secret key and avoid CORS.
+          try {
+            // Optimistic update for better UX (assuming success if redirected back)
+            // Real verification would happen here if backend was available.
+            // For this demo, we trust the return.
+
+            await setDoc(doc(db, 'users', currentUser.uid), {
+              subscription: plan_id,
+              subscriptionDate: serverTimestamp()
+            }, { merge: true });
+
+            alert(`Successfully upgraded to ${plan_name}!`);
+            localStorage.removeItem('pending_payment');
+
+          } catch (err) {
+            console.error("Upgrade failed:", err);
+            alert("Failed to update subscription. Please contact support.");
+          }
+        }
+        // --- PAYMENT VERIFICATION END ---
+
         const userRef = doc(db, 'users', currentUser.uid);
         onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -854,7 +887,10 @@ export default function NutriGenius() {
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg overflow-hidden">
                         {profileData?.profileImage ? <img src={profileData.profileImage} className="w-full h-full object-cover" /> : user?.email?.[0].toUpperCase()}
                       </div>
-                      <div className="overflow-hidden"><p className="font-bold truncate">{user?.email}</p><p className="text-xs text-emerald-100 opacity-80">Basic Plan</p></div>
+                      <div className="overflow-hidden">
+                        <p className="font-bold truncate">{user?.email}</p>
+                        <p className="text-xs text-emerald-100 opacity-80 capitalize">{profileData?.subscription || 'Basic'} Plan</p>
+                      </div>
                     </div>
                   </div>
                   <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-800">
