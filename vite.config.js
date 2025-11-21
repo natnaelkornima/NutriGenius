@@ -7,4 +7,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api/chapa': {
+        target: 'https://api.chapa.co/v1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/chapa/, '')
+      }
+    }
+  }
 })
