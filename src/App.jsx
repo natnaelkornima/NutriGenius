@@ -86,135 +86,88 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
-// --- GEMINI AI INTEGRATION ---
+import { mealDatabase } from './data/meals';
+
+// --- LOCAL MEAL GENERATION ---
 const generateAffordablePlanAI = async (userProfile) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Calculate daily budget from monthly budget (assuming 30 days)
+  const monthlyBudget = parseFloat(userProfile.weeklyBudget) || 0;
+  const dailyBudget = monthlyBudget / 30;
 
-  if (!apiKey) {
-    console.warn("Missing Gemini API Key");
-    // Fallback immediately if no key
-    return {
-      date: new Date().toISOString(),
-      total_estimated_cost: 150,
-      meals: [
-        { type: 'Breakfast', name: 'ERROR: Missing API Key', cost: 0, calories: 0, ingredients: [], instructions: 'Please add VITE_GEMINI_API_KEY to your .env file or Netlify settings.' },
-        { type: 'Lunch', name: 'Check Settings', cost: 0, calories: 0, ingredients: [], instructions: 'API Key is undefined.' },
-        { type: 'Dinner', name: 'System Offline', cost: 0, calories: 0, ingredients: [], instructions: 'Cannot contact AI.' }
-      ]
-    };
+  // Filter meals that fit within the daily budget
+  // We allow a small buffer (e.g., +10%) or just strict filtering
+  const affordableMeals = mealDatabase.filter(meal => meal.total <= dailyBudget * 1.1);
+
+  // If no meals fit, return the cheapest one available
+  let selectedPlan;
+  if (affordableMeals.length === 0) {
+    // Sort by total price ascending and pick the first
+    selectedPlan = [...mealDatabase].sort((a, b) => a.total - b.total)[0];
+  } else {
+    // Pick a random meal from the affordable options
+    const randomIndex = Math.floor(Math.random() * affordableMeals.length);
+    selectedPlan = affordableMeals[randomIndex];
   }
 
-  // Added randomization to ensure variety on subsequent calls
-  const varietySeed = Math.floor(Math.random() * 10000);
-
-  const promptText = `
-    You are NutriGenius, an expert Ethiopian nutritionist. 
-    Generate a 1-day meal plan (Breakfast, Lunch, Dinner) for a user with this profile:
-    - Goal: ${userProfile.goals}
-    - Weekly Budget: ${userProfile.weeklyBudget} ETB
-    - Dietary Restrictions: ${userProfile.dietaryRestrictions?.join(', ') || 'None'}
-    - Allergies: ${userProfile.allergies?.join(', ') || 'None'}
-    - Activity Level: ${userProfile.activityLevel}
-    
-    VARIATION SEED: ${varietySeed} (Ensure this plan is different from previous generic outputs).
-
-    CRITICAL REQUIREMENTS:
-    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot).
-    2. Use local Ethiopian ingredients available in markets (Mercato, local shops).
-    3. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
-       - Example: 1 Injera ~15-20 ETB, Shiro powder ~300 ETB/kg.
-       - Total daily cost should be realistic for the budget provided.
-    4. Return ONLY valid JSON without markdown formatting.
-    
-    JSON Structure:
-    {
-      "date": "${new Date().toISOString()}",
-      "total_estimated_cost": Number,
-      "meals": [
-        {
-          "type": "Breakfast",
-          "name": "String",
-          "cost": Number,
-          "calories": Number,
-          "ingredients": [{"name": "String", "amount": "String", "cost": Number}],
-          "instructions": "String"
-        },
-        { "type": "Lunch", ... },
-        { "type": "Dinner", ... }
-      ]
-    }
-  `;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { responseMimeType: "application/json" }
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorBody.slice(0, 100)}`);
-    }
-
-    const data = await response.json();
-    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return JSON.parse(textResponse);
-
-  } catch (error) {
-    console.error("AI Error:", error);
-    return {
-      date: new Date().toISOString(),
-      total_estimated_cost: 150,
-      meals: [
-        { type: 'Breakfast', name: `Error: ${error.message || 'Unknown'}`, cost: 0, calories: 0, ingredients: [], instructions: 'Check console for details.' },
-        { type: 'Lunch', name: 'AI Generation Failed', cost: 0, calories: 0, ingredients: [], instructions: 'Try again later.' },
-        { type: 'Dinner', name: 'Fallback Mode', cost: 0, calories: 0, ingredients: [], instructions: 'Using offline data.' }
-      ]
-    };
-  }
+  // Construct the response object matching the expected format
+  return {
+    date: new Date().toISOString(),
+    total_estimated_cost: selectedPlan.total,
+    meals: [
+      {
+        type: 'Breakfast',
+        name: selectedPlan.breakfast.name,
+        cost: selectedPlan.breakfast.price,
+        calories: 400, // Placeholder as CSV didn't have calories
+        ingredients: [],
+        instructions: 'Enjoy your delicious breakfast!'
+      },
+      {
+        type: 'Lunch',
+        name: selectedPlan.lunch.name,
+        cost: selectedPlan.lunch.price,
+        calories: 600,
+        ingredients: [],
+        instructions: 'A hearty lunch to keep you going.'
+      },
+      {
+        type: 'Dinner',
+        name: selectedPlan.dinner.name,
+        cost: selectedPlan.dinner.price,
+        calories: 500,
+        ingredients: [],
+        instructions: 'A nutritious dinner to end the day.'
+      }
+    ]
+  };
 };
 
 const analyzeDailyPlanAI = async (plan) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) return { summary: "API Key missing. Please add VITE_GEMINI_API_KEY to .env file.", score: 0 };
+  // Local analysis based on meal data
+  const totalCalories = plan.meals.reduce((sum, meal) => sum + meal.calories, 0);
+  const totalCost = plan.meals.reduce((sum, meal) => sum + meal.cost, 0);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Simple scoring based on calorie range and cost
+  let score = 7; // Base score
 
-  const promptText = `
-    Analyze this daily meal plan combination:
-    Breakfast: ${plan.meals[0].name} (${plan.meals[0].calories}kcal)
-    Lunch: ${plan.meals[1].name} (${plan.meals[1].calories}kcal)
-    Dinner: ${plan.meals[2].name} (${plan.meals[2].calories}kcal)
-
-    Provide a 2-sentence nutritional summary focusing on macro balance and satiety. 
-    Then provide a score out of 10 for "Nutritional Balance".
-    
-    Output Format JSON:
-    {
-      "summary": "String",
-      "score": Number
-    }
-  `;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { responseMimeType: "application/json" }
-      })
-    });
-    const data = await response.json();
-    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
-  } catch (error) {
-    return { summary: "Balanced meal set with good protein distribution.", score: 8 };
+  // Adjust score based on calorie balance (ideal 1400-2000 kcal/day)
+  if (totalCalories >= 1400 && totalCalories <= 2000) {
+    score += 1;
+  } else if (totalCalories < 1200 || totalCalories > 2500) {
+    score -= 1;
   }
+
+  // Adjust score based on cost efficiency
+  if (totalCost < 500) {
+    score += 1; // Budget-friendly
+  }
+
+  // Cap score between 1-10
+  score = Math.max(1, Math.min(10, score));
+
+  const summary = `This balanced Ethiopian meal plan provides ${totalCalories} kcal for only ${totalCost.toFixed(0)} ETB. Great combination of traditional dishes with good nutritional value and affordability.`;
+
+  return { summary, score };
 };
 
 const REVIEWS = [
