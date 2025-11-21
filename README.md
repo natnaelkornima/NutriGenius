@@ -1,5 +1,7 @@
 # 🥗 NutriGenius AI
 
+**Live Demo:** [https://geniusnutri.netlify.app/](https://geniusnutri.netlify.app/)
+
 **NutriGenius** is an intelligent, AI-powered meal planning application designed to make healthy eating accessible and affordable for everyone. By leveraging the power of Google's Gemini AI, NutriGenius generates personalized meal plans that fit your budget, dietary preferences, and health goals.
 
 ![NutriGenius Banner](https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=2053&auto=format&fit=crop&ixlib=rb-4.0.3)
