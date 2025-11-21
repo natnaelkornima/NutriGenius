@@ -120,9 +120,11 @@ const generateAffordablePlanAI = async (userProfile) => {
     VARIATION SEED: ${varietySeed} (Ensure this plan is different from previous generic outputs).
 
     CRITICAL REQUIREMENTS:
-    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt).
-    2. Use local Ethiopian ingredients available in markets.
-    3. Total estimated cost for the day must be realistic in ETB (aim for under 300 ETB/day for budget, up to 1000 ETB for premium).
+    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot).
+    2. Use local Ethiopian ingredients available in markets (Mercato, local shops).
+    3. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
+       - Example: 1 Injera ~15-20 ETB, Shiro powder ~300 ETB/kg.
+       - Total daily cost should be realistic for the budget provided.
     4. Return ONLY valid JSON without markdown formatting.
     
     JSON Structure:
@@ -164,11 +166,11 @@ const generateAffordablePlanAI = async (userProfile) => {
     console.error("AI Error:", error);
     return {
       date: new Date().toISOString(),
-      total_estimated_cost: 5.50,
+      total_estimated_cost: 150,
       meals: [
-        { type: 'Breakfast', name: 'Budget Oats', cost: 0.50, calories: 300, ingredients: [{ name: 'Oats', amount: '1 cup', cost: 0.50 }], instructions: 'Boil water, add oats.' },
-        { type: 'Lunch', name: 'Rice & Beans', cost: 2.00, calories: 600, ingredients: [{ name: 'Rice', amount: '1 cup', cost: 0.50 }, { name: 'Beans', amount: '1 can', cost: 1.50 }], instructions: 'Cook rice, heat beans.' },
-        { type: 'Dinner', name: 'Egg Scramble', cost: 3.00, calories: 400, ingredients: [{ name: 'Eggs', amount: '3', cost: 1.00 }, { name: 'Toast', amount: '2 slices', cost: 2.00 }], instructions: 'Scramble eggs.' }
+        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
+        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
+        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
       ]
     };
   }
@@ -933,9 +935,30 @@ export default function NutriGenius() {
   const DashboardView = () => {
     const [showSettings, setShowSettings] = useState(false);
     const settingsRef = useRef(null);
-    const spent = mealPlans.reduce((acc, plan) => acc + plan.total_estimated_cost, 0).toFixed(2);
-    const budget = profileData?.weeklyBudget || 0;
+
+    // Monthly Budget Logic
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyPlans = mealPlans.filter(plan => {
+      const d = new Date(plan.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const spent = monthlyPlans.reduce((acc, plan) => acc + plan.total_estimated_cost, 0).toFixed(2);
+    const budget = profileData?.weeklyBudget || 0; // Treating as Monthly Budget
     const percent = Math.min((spent / budget) * 100, 100);
+
+    // Calendar Logic
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    const getDailyCost = (day) => {
+      const plan = monthlyPlans.find(p => new Date(p.date).getDate() === day);
+      return plan ? plan.total_estimated_cost : 0;
+    };
 
     useEffect(() => {
       const handleClickOutside = (event) => { if (settingsRef.current && !settingsRef.current.contains(event.target)) setShowSettings(false); };
@@ -979,7 +1002,7 @@ export default function NutriGenius() {
                   </div>
                   <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><Activity size={16} className="text-emerald-500" /> Goal</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.goals || 'Not set'}</span></div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-500" /> Budget</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.weeklyBudget || 0} ETB/wk</span></div>
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-500" /> Budget</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.weeklyBudget || 0} ETB/mo</span></div>
                   </div>
                   <div className="p-2">
                     <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full text-left flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
@@ -1002,7 +1025,7 @@ export default function NutriGenius() {
             <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
             <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Weekly Budget Usage</p>
+                <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
                 <div className="text-5xl font-bold tracking-tight mb-2">ETB {spent} <span className="text-2xl text-gray-500 font-normal">/ ETB {budget}</span></div>
                 <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block">{100 - Math.round(percent)}% Remaining</div>
               </div>
@@ -1011,6 +1034,8 @@ export default function NutriGenius() {
               </div>
             </div>
           </div>
+
+
 
           {/* Action Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -1067,6 +1092,36 @@ export default function NutriGenius() {
               ))}
             </div>
           )}
+
+          {/* Calendar Tracker (Moved) */}
+          <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h3>
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
+                {monthlyPlans.length} Days Planned
+              </span>
+            </div>
+            <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                <div key={d} className="text-xs font-bold text-gray-400">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
+              {days.map(day => {
+                const cost = getDailyCost(day);
+                const isToday = day === now.getDate();
+                return (
+                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs relative transition-all ${cost > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-800' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isToday ? 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-900' : ''}`}>
+                    <span>{day}</span>
+                    {cost > 0 && <span className="text-[10px] mt-0.5">{Math.round(cost)}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1183,7 +1238,7 @@ export default function NutriGenius() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-6">
-              <Input name="budget" type="number" label="Weekly Budget (ETB)" defaultValue={profileData?.weeklyBudget} required />
+              <Input name="budget" type="number" label="Monthly Budget (ETB)" defaultValue={profileData?.weeklyBudget} required />
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Activity Level</label>
                 <div className="flex gap-2">
