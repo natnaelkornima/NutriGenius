@@ -330,7 +330,7 @@ const PricingView = ({ onBack, userEmail }) => {
           callback_url: window.location.origin,
           return_url: window.location.origin,
           customization: {
-            title: `NutriGenius ${plan.name}`,
+            title: `NG ${plan.name}`,
             description: `Subscription to ${plan.name} Plan`
           }
         })
