@@ -68,6 +68,7 @@ import {
   Send
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import AnimatedHeroText from './components/AnimatedHeroText';
 
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
@@ -658,8 +659,11 @@ export default function NutriGenius() {
             <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-full text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-semibold animate-in fade-in slide-in-from-bottom-4 duration-700">
               <Zap size={16} className="fill-emerald-700 dark:fill-emerald-400" /> #1 AI Nutrition Coach for Budgets
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] tracking-tight animate-in fade-in slide-in-from-bottom-8 duration-1000">
-              Eat Healthy.<br />
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] tracking-tight">
+              <AnimatedHeroText
+                text="Eat Healthy."
+                className="block mb-2"
+              />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">Without Breaking the Bank.</span>
             </h1>
             <p className="text-lg sm:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
