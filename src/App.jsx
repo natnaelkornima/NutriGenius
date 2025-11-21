@@ -213,7 +213,7 @@ const analyzeDailyPlanAI = async (plan) => {
 };
 
 const REVIEWS = [
-  { id: 1, name: "Jane Doe", role: "Busy Professional", initials: "JD", text: "I saved $150 on groceries in my first month. This AI is a game changer.", rating: 5 },
+  { id: 1, name: "Jane Doe", role: "Busy Professional", initials: "JD", text: "I saved 1500 ETB on groceries in my first month. This AI is a game changer.", rating: 5 },
   { id: 2, name: "Michael Chen", role: "Student", initials: "MC", text: "Helped me stop eating instant noodles every day. The recipes are actually good!", rating: 5 },
   { id: 3, name: "Sarah Jenkins", role: "Fitness Enthusiast", initials: "SJ", text: "Found high protein sources I didn't even know were cheap. Highly recommend.", rating: 4 }
 ];
@@ -979,7 +979,7 @@ export default function NutriGenius() {
                   </div>
                   <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><Activity size={16} className="text-emerald-500" /> Goal</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.goals || 'Not set'}</span></div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-500" /> Budget</span><span className="font-semibold text-gray-900 dark:text-white">${profileData?.weeklyBudget || 0}/wk</span></div>
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-500" /> Budget</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.weeklyBudget || 0} ETB/wk</span></div>
                   </div>
                   <div className="p-2">
                     <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full text-left flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
@@ -1003,7 +1003,7 @@ export default function NutriGenius() {
             <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Weekly Budget Usage</p>
-                <div className="text-5xl font-bold tracking-tight mb-2">${spent} <span className="text-2xl text-gray-500 font-normal">/ ${budget}</span></div>
+                <div className="text-5xl font-bold tracking-tight mb-2">ETB {spent} <span className="text-2xl text-gray-500 font-normal">/ ETB {budget}</span></div>
                 <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block">{100 - Math.round(percent)}% Remaining</div>
               </div>
               <div className="w-full md:w-64">
@@ -1048,7 +1048,7 @@ export default function NutriGenius() {
                       {new Date(plan.date).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </div>
                     <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold px-3 py-1 rounded-full text-sm">
-                      ${plan.total_estimated_cost.toFixed(2)}
+                      ETB {plan.total_estimated_cost.toFixed(2)}
                     </span>
                   </div>
                   <div className="space-y-2">
@@ -1056,7 +1056,7 @@ export default function NutriGenius() {
                       <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
                         <span className="font-medium flex-1 truncate">{meal.name}</span>
-                        <span className="text-xs bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded">${meal.cost.toFixed(2)}</span>
+                        <span className="text-xs bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded">ETB {meal.cost.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -1183,7 +1183,7 @@ export default function NutriGenius() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-6">
-              <Input name="budget" type="number" label="Weekly Budget ($)" defaultValue={profileData?.weeklyBudget} required />
+              <Input name="budget" type="number" label="Weekly Budget (ETB)" defaultValue={profileData?.weeklyBudget} required />
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Activity Level</label>
                 <div className="flex gap-2">
@@ -1302,7 +1302,7 @@ export default function NutriGenius() {
                 >
                   <div className="text-xs font-bold text-gray-400 uppercase mb-1">{meal.type}</div>
                   <div className="font-bold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600 mb-1 truncate">{meal.name}</div>
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400">${meal.cost.toFixed(2)} • {meal.calories}kcal</div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400">{meal.cost.toFixed(2)} ETB • {meal.calories}kcal</div>
                 </div>
               ))}
             </div>
@@ -1455,7 +1455,7 @@ export default function NutriGenius() {
               </span>
               <h3 className="text-2xl font-bold mb-1">{selectedMeal.name}</h3>
               <div className="flex items-center gap-4 text-white/90 text-sm font-medium">
-                <span className="bg-black/10 px-2 py-0.5 rounded backdrop-blur-md">${selectedMeal.cost.toFixed(2)}</span>
+                <span className="bg-black/10 px-2 py-0.5 rounded backdrop-blur-md">{selectedMeal.cost.toFixed(2)} ETB</span>
                 <span>{selectedMeal.calories} kcal</span>
               </div>
             </div>
@@ -1468,7 +1468,7 @@ export default function NutriGenius() {
                 {selectedMeal.ingredients.map((ing, i) => (
                   <div key={i} className="flex justify-between text-sm py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                     <span className="text-gray-600 dark:text-gray-300 font-medium">{ing.amount} {ing.name}</span>
-                    <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">${ing.cost.toFixed(2)}</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{ing.cost.toFixed(2)} ETB</span>
                   </div>
                 ))}
               </div>
