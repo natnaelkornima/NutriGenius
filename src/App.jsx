@@ -64,8 +64,10 @@ import {
   Linkedin,
   Facebook,
   Mail,
-  CreditCard
+  CreditCard,
+  Send
 } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
@@ -600,6 +602,35 @@ export default function NutriGenius() {
 
   const LandingPage = () => {
     const [activeStep, setActiveStep] = useState(0);
+    const [subscribing, setSubscribing] = useState(false);
+    const form = useRef();
+
+    const handleSubscribe = (e) => {
+      e.preventDefault();
+      setSubscribing(true);
+
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+      if (!serviceId || !templateId || !publicKey || serviceId === 'your_service_id') {
+        alert("Please configure EmailJS keys in your .env file to enable newsletter.");
+        setSubscribing(false);
+        return;
+      }
+
+      emailjs.sendForm(serviceId, templateId, form.current, publicKey)
+        .then((result) => {
+          console.log(result.text);
+          alert("Thanks for subscribing! Check your inbox for a welcome email.");
+          form.current.reset();
+        }, (error) => {
+          console.log(error.text);
+          alert("Failed to subscribe. Please try again.");
+        })
+        .finally(() => setSubscribing(false));
+    };
+
     return (
       <div className="min-h-screen bg-white dark:bg-gray-950 font-sans selection:bg-emerald-100 transition-colors duration-300 overflow-x-hidden">
         {/* Navbar */}
@@ -778,19 +809,22 @@ export default function NutriGenius() {
                 </p>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Subscribe to our newsletter</label>
-                  <div className="flex gap-2">
+                  <form ref={form} onSubmit={handleSubscribe} className="flex gap-2">
                     <div className="relative flex-1">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                       <input
                         type="email"
+                        name="user_email"
                         placeholder="Enter your email"
+                        required
                         className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                       />
                     </div>
-                    <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
-                      Subscribe
+                    <button type="submit" disabled={subscribing} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-70 flex items-center gap-2">
+                      {subscribing ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+                      {subscribing ? '...' : 'Subscribe'}
                     </button>
-                  </div>
+                  </form>
                 </div>
               </div>
 
