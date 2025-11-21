@@ -218,7 +218,7 @@ const TRUSTED_BY = ["WholeFoods Market", "Trader Joe's Index", "Instacart Data",
 
 // --- UI COMPONENTS ---
 
-const Button = ({ children, onClick, variant = 'primary', disabled, className = '', type = 'button' }) => {
+const Button = ({ children, onClick, variant = 'primary', disabled, isLoading, className = '', type = 'button' }) => {
   const baseStyle = "px-6 py-3 rounded-full font-semibold transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed tracking-wide text-sm";
   const variants = {
     primary: "bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-emerald-200 hover:shadow-lg active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950",
@@ -227,7 +227,7 @@ const Button = ({ children, onClick, variant = 'primary', disabled, className = 
     outline: "border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-900/20",
     danger: "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
   };
-  return <button type={type} onClick={onClick} disabled={disabled} className={`${baseStyle} ${variants[variant]} ${className}`}>{disabled ? <Loader2 className="animate-spin" size={18} /> : children}</button>;
+  return <button type={type} onClick={onClick} disabled={disabled || isLoading} className={`${baseStyle} ${variants[variant]} ${className}`}>{isLoading ? <Loader2 className="animate-spin" size={18} /> : children}</button>;
 };
 
 const Input = ({ label, ...props }) => (
@@ -296,6 +296,7 @@ const PricingView = ({ onBack, userEmail }) => {
     const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
     const tx_ref = `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+    console.log("Initiating payment for:", plan.id);
     try {
       // Use local proxy to avoid CORS issues
       const response = await fetch("/api/chapa/transaction/initialize", {
@@ -330,8 +331,8 @@ const PricingView = ({ onBack, userEmail }) => {
         }));
         window.location.href = data.data.checkout_url;
       } else {
-        alert("Payment initialization failed. Please check your API Key in .env");
         console.error("Chapa failed:", data);
+        alert(`Payment initialization failed: ${data.message || JSON.stringify(data)}`);
       }
     } catch (err) {
       console.error("Payment Error:", err);
@@ -380,10 +381,11 @@ const PricingView = ({ onBack, userEmail }) => {
               <Button
                 onClick={() => handleSubscribe(plan)}
                 disabled={loading === plan.id || plan.price === 0}
+                isLoading={loading === plan.id}
                 variant={plan.recommended ? 'primary' : 'secondary'}
                 className="w-full"
               >
-                {loading === plan.id ? 'Processing...' : plan.btnText}
+                {plan.btnText}
               </Button>
             </div>
           ))}
@@ -839,7 +841,7 @@ export default function NutriGenius() {
         <form onSubmit={handleAuth} className="space-y-5">
           <Input name="email" type="email" label="Email Address" placeholder="hello@example.com" required />
           <Input name="password" type="password" label="Password" placeholder="••••••••" required />
-          <Button type="submit" disabled={loading} className="w-full text-lg py-4 shadow-emerald-200 dark:shadow-none">{authMode === 'login' ? 'Sign In' : 'Get Started'}</Button>
+          <Button type="submit" isLoading={loading} className="w-full text-lg py-4 shadow-emerald-200 dark:shadow-none">{authMode === 'login' ? 'Sign In' : 'Get Started'}</Button>
         </form>
 
         <div className="my-6 flex items-center gap-4">
@@ -848,7 +850,7 @@ export default function NutriGenius() {
           <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1" />
         </div>
 
-        <Button onClick={handleGoogleAuth} variant="secondary" disabled={loading} className="w-full">
+        <Button onClick={handleGoogleAuth} variant="secondary" isLoading={loading} className="w-full">
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
