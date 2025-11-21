@@ -89,7 +89,7 @@ const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 // --- GEMINI AI INTEGRATION ---
 const generateAffordablePlanAI = async (userProfile) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   if (!apiKey) {
     console.warn("Missing Gemini API Key");
@@ -98,9 +98,9 @@ const generateAffordablePlanAI = async (userProfile) => {
       date: new Date().toISOString(),
       total_estimated_cost: 150,
       meals: [
-        { type: 'Breakfast', name: 'Firfir (Demo)', cost: 40, calories: 350, ingredients: [{ name: 'Injera', amount: '1 roll', cost: 15 }, { name: 'Berbere Sauce', amount: '1 ladle', cost: 25 }], instructions: 'Mix torn injera with spicy sauce.' },
-        { type: 'Lunch', name: 'Shiro Wot (Demo)', cost: 60, calories: 500, ingredients: [{ name: 'Shiro Powder', amount: '100g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Simmer shiro powder with garlic and oil.' },
-        { type: 'Dinner', name: 'Atkilt Wot (Demo)', cost: 50, calories: 400, ingredients: [{ name: 'Cabbage/Potato', amount: '200g', cost: 30 }, { name: 'Carrots', amount: '100g', cost: 20 }], instructions: 'Sauté vegetables with turmeric.' }
+        { type: 'Breakfast', name: 'ERROR: Missing API Key', cost: 0, calories: 0, ingredients: [], instructions: 'Please add VITE_GEMINI_API_KEY to your .env file or Netlify settings.' },
+        { type: 'Lunch', name: 'Check Settings', cost: 0, calories: 0, ingredients: [], instructions: 'API Key is undefined.' },
+        { type: 'Dinner', name: 'System Offline', cost: 0, calories: 0, ingredients: [], instructions: 'Cannot contact AI.' }
       ]
     };
   }
@@ -156,7 +156,10 @@ const generateAffordablePlanAI = async (userProfile) => {
       })
     });
 
-    if (!response.ok) throw new Error('AI generation failed');
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorBody.slice(0, 100)}`);
+    }
 
     const data = await response.json();
     const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -168,9 +171,9 @@ const generateAffordablePlanAI = async (userProfile) => {
       date: new Date().toISOString(),
       total_estimated_cost: 150,
       meals: [
-        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
-        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
-        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
+        { type: 'Breakfast', name: `Error: ${error.message || 'Unknown'}`, cost: 0, calories: 0, ingredients: [], instructions: 'Check console for details.' },
+        { type: 'Lunch', name: 'AI Generation Failed', cost: 0, calories: 0, ingredients: [], instructions: 'Try again later.' },
+        { type: 'Dinner', name: 'Fallback Mode', cost: 0, calories: 0, ingredients: [], instructions: 'Using offline data.' }
       ]
     };
   }
@@ -180,7 +183,7 @@ const analyzeDailyPlanAI = async (plan) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) return { summary: "API Key missing. Please add VITE_GEMINI_API_KEY to .env file.", score: 0 };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   const promptText = `
     Analyze this daily meal plan combination:
