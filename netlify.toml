@@ -1,6 +1,8 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
+[[redirects]]
+  from = "/api/chapa/*"
+  to = "https://api.chapa.co/v1/:splat"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
