@@ -294,9 +294,24 @@ const PricingView = ({ onBack, userEmail }) => {
 
     // Chapa Integration
     const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
+
+    if (!CHAPA_KEY || !CHAPA_KEY.startsWith('CHASECK')) {
+      alert("Invalid API Key. Please ensure you are using the Chapa SECRET Key (starts with CHASECK) in your .env file.");
+      setLoading(null);
+      return;
+    }
+
+    if (!userEmail) {
+      alert("User email is missing. Please sign in again.");
+      setLoading(null);
+      return;
+    }
+
     const tx_ref = `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     console.log("Initiating payment for:", plan.id);
+    console.log("Using Key:", CHAPA_KEY.substring(0, 10) + "...");
+
     try {
       // Use local proxy to avoid CORS issues
       const response = await fetch("/api/chapa/transaction/initialize", {
