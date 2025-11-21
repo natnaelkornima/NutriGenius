@@ -637,8 +637,8 @@ export default function NutriGenius() {
         <nav className="fixed w-full z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-xl">
-                <img src="/favicon.png" alt="Logo" className="w-6 h-6 object-contain" />
+              <div className="">
+                <img src={isDarkMode ? "/dark_mood.png" : "/favicon.png"} alt="Logo" className="w-10 h-10 object-contain" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight hidden sm:block">NutriGenius</span>
             </div>
@@ -799,8 +799,8 @@ export default function NutriGenius() {
               {/* Brand & Newsletter */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex items-center gap-2">
-                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg">
-                    <img src="/favicon.png" alt="Logo" className="w-6 h-6 object-contain" />
+                  <div className="">
+                    <img src={isDarkMode ? "/dark_mood.png" : "/favicon.png"} alt="Logo" className="w-10 h-10 object-contain" />
                   </div>
                   <span className="font-bold text-xl text-gray-900 dark:text-white">NutriGenius</span>
                 </div>
@@ -890,8 +890,8 @@ export default function NutriGenius() {
       <div className="w-full max-w-md bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white dark:border-gray-700 z-10">
         <button onClick={() => setView('landing')} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X size={24} /></button>
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-emerald-100 dark:bg-emerald-900/50 p-4 rounded-2xl mb-4">
-            <img src="/favicon.png" alt="Logo" className="w-8 h-8 object-contain" />
+          <div className="mb-4">
+            <img src={document.documentElement.classList.contains('dark') ? "/dark_mood.png" : "/favicon.png"} alt="Logo" className="w-16 h-16 object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
         </div>
@@ -943,7 +943,7 @@ export default function NutriGenius() {
         <div className="bg-white dark:bg-gray-900 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm">
           <div className="max-w-5xl mx-auto flex justify-between items-center relative">
             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-lg">
-              <img src="/favicon.png" alt="Logo" className="w-6 h-6 object-contain" /> NutriGenius
+              <img src={isDarkMode ? "/dark_mood.png" : "/favicon.png"} alt="Logo" className="w-8 h-8 object-contain" /> NutriGenius
             </div>
             <div className="relative flex items-center gap-4" ref={settingsRef}>
 
