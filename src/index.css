@@ -1,2 +1,16 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
+
+@theme {
+    --animate-scroll: scroll 20s linear infinite;
+
+    @keyframes scroll {
+        from {
+            transform: translateX(0);
+        }
+
+        to {
+            transform: translateX(-100%);
+        }
+    }
+}
