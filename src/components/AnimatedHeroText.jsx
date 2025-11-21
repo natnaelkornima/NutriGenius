@@ -29,7 +29,7 @@ const AnimatedHeroText = ({ text, className = '' }) => {
     }, { scope: containerRef });
 
     return (
-        <div ref={containerRef} className={`overflow-hidden ${className}`} style={{ perspective: '1000px' }}>
+        <div ref={containerRef} className={`overflow-hidden py-4 px-2 -my-4 ${className}`} style={{ perspective: '1000px' }}>
             {text.split('').map((char, i) => (
                 <span
                     key={i}
