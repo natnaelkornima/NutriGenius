@@ -439,24 +439,40 @@ export default function NutriGenius() {
         const pendingPayment = localStorage.getItem('pending_payment');
         if (pendingPayment) {
           const { tx_ref, plan_id, plan_name } = JSON.parse(pendingPayment);
-          // Verify with Chapa (Client-side verification for demo purposes)
-          // Note: In production, use a backend proxy to hide the secret key and avoid CORS.
+          const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
+
           try {
-            // Optimistic update for better UX (assuming success if redirected back)
-            // Real verification would happen here if backend was available.
-            // For this demo, we trust the return.
+            // Verify with Chapa using local proxy
+            const verifyResponse = await fetch(`/api/chapa/transaction/verify/${tx_ref}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${CHAPA_KEY}`
+              }
+            });
 
-            await setDoc(doc(db, 'users', currentUser.uid), {
-              subscription: plan_id,
-              subscriptionDate: serverTimestamp()
-            }, { merge: true });
+            const verifyData = await verifyResponse.json();
 
-            alert(`Successfully upgraded to ${plan_name}!`);
+            if (verifyData.status === 'success') {
+              await setDoc(doc(db, 'users', currentUser.uid), {
+                subscription: plan_id,
+                subscriptionDate: serverTimestamp()
+              }, { merge: true });
+
+              alert(`Payment Successful! Upgraded to ${plan_name}.`);
+            } else {
+              alert("Payment verification failed. Transaction was not successful.");
+              console.warn("Payment failed:", verifyData);
+            }
+
+            // Always clear pending payment to prevent infinite loops
             localStorage.removeItem('pending_payment');
 
           } catch (err) {
-            console.error("Upgrade failed:", err);
-            alert("Failed to update subscription. Please contact support.");
+            console.error("Verification Error:", err);
+            alert("Could not verify payment. Please check your connection.");
+            // Do NOT clear pending payment here so user can try again? 
+            // Actually, better to clear it to avoid annoying loops on refresh.
+            localStorage.removeItem('pending_payment');
           }
         }
         // --- PAYMENT VERIFICATION END ---
