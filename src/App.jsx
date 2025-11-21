@@ -417,10 +417,6 @@ export default function NutriGenius() {
 
         {/* Trusted Data Sources Marquee */}
         <section className="py-10 border-y border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/30 backdrop-blur-sm overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 mb-6 text-center">
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Trusted Data Sources</p>
-          </div>
-
           <div className="relative flex overflow-x-hidden group">
             {/* Gradient Masks for smooth fade edges */}
             <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white dark:from-gray-950 to-transparent z-10" />
@@ -449,6 +445,10 @@ export default function NutriGenius() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 mt-6 text-center">
+            <p className="text-sm text-gray-400">We aggregate prices from the nation's top grocers.</p>
           </div>
         </section>
         <section className="py-20 px-4 sm:px-6 relative overflow-hidden">
@@ -539,26 +539,6 @@ export default function NutriGenius() {
           </div>
         </section>
 
-        {/* Vertical Marquee */}
-        <section className="py-12 bg-gray-50 dark:bg-gray-900 border-y border-gray-200 dark:border-gray-800 overflow-hidden relative">
-          <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
-            <div className="md:w-1/3 z-10 bg-gray-50 dark:bg-gray-900 p-4 text-center md:text-left">
-              <h3 className="text-lg font-bold text-gray-400 uppercase tracking-widest mb-2">Trusted Data Sources</h3>
-              <p className="text-gray-900 dark:text-white text-2xl font-bold">We aggregate prices from the nation's top grocers.</p>
-            </div>
-            <div className="md:w-2/3 h-40 relative overflow-hidden mask-gradient-vertical w-full">
-              <style>{`
-                   @keyframes scrollY { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
-                   .animate-scroll-y { animation: scrollY 20s linear infinite; }
-                 `}</style>
-              <div className="animate-scroll-y flex flex-col gap-6 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                {[...TRUSTED_BY, ...TRUSTED_BY].map((brand, i) => (
-                  <div key={i} className="text-xl font-bold text-gray-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-default">{brand}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
 
         <footer className="bg-white dark:bg-gray-950 py-12 px-6">
           <div className="max-w-6xl mx-auto flex justify-between items-center">
