@@ -57,7 +57,8 @@ import {
   Camera,
   FileText,
   Sparkles,
-  Save
+  Save,
+  Edit2
 } from 'lucide-react';
 
 // --- FIREBASE CONFIGURATION ---
@@ -845,6 +846,7 @@ export default function NutriGenius() {
     if (!selectedPlan) return null;
 
     const [notes, setNotes] = useState(selectedPlan.notes || '');
+    const [isEditingNote, setIsEditingNote] = useState(!selectedPlan.notes);
     const [analysis, setAnalysis] = useState(selectedPlan.aiAnalysis || null);
     const [analyzing, setAnalyzing] = useState(false);
     const [savingNote, setSavingNote] = useState(false);
@@ -856,12 +858,27 @@ export default function NutriGenius() {
         // Update local state to reflect change without refetch needed immediately
         const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes } : p);
         setMealPlans(updatedPlans);
+        setIsEditingNote(false);
         alert("Notes saved successfully!");
       } catch (e) {
         console.error(e);
         alert("Failed to save notes. Please try again.");
       }
       setSavingNote(false);
+    };
+
+    const handleDeleteNote = async () => {
+      if (!window.confirm("Are you sure you want to delete this note?")) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes: "" });
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes: "" } : p);
+        setMealPlans(updatedPlans);
+        setNotes("");
+        setIsEditingNote(true);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to delete note.");
+      }
     };
 
     const handleAnalyze = async () => {
@@ -940,20 +957,44 @@ export default function NutriGenius() {
 
             {/* User Notes Section */}
             <div>
-              <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
+              <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
                 <FileText size={18} className="text-gray-400" /> Daily Notes
               </h4>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="How did you feel today? Any substitutions made?"
-                className="w-full h-24 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-              />
-              <div className="mt-2 flex justify-end">
-                <Button onClick={handleSaveNotes} disabled={savingNote} variant="secondary" className="px-4 py-2 text-xs h-auto flex items-center gap-2">
-                  <Save size={14} /> {savingNote ? "Saving..." : "Save Note"}
-                </Button>
-              </div>
+
+              {!isEditingNote && notes ? (
+                <div className="relative group rotate-1 hover:rotate-0 transition-transform duration-300">
+                  <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-xl shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
+                    <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-emerald-600 shadow-sm backdrop-blur-sm">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={handleDeleteNote} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-red-600 shadow-sm backdrop-blur-sm">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-2">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="How did you feel today? Any substitutions made?"
+                    className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
+                  />
+                  <div className="mt-3 flex justify-end gap-2">
+                    {notes && !isEditingNote && (
+                      <Button onClick={() => setIsEditingNote(false)} variant="ghost" className="px-4 py-2 text-xs h-auto">
+                        Cancel
+                      </Button>
+                    )}
+                    <Button onClick={handleSaveNotes} disabled={savingNote} variant="secondary" className="px-4 py-2 text-xs h-auto flex items-center gap-2 shadow-lg shadow-emerald-100 dark:shadow-none">
+                      <Save size={14} /> {savingNote ? "Saving..." : "Save Note"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
