@@ -58,7 +58,12 @@ import {
   FileText,
   Sparkles,
   Save,
-  Edit2
+  Edit2,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Facebook,
+  Mail
 } from 'lucide-react';
 
 // --- FIREBASE CONFIGURATION ---
@@ -541,10 +546,86 @@ export default function NutriGenius() {
         </section>
 
 
-        <footer className="bg-white dark:bg-gray-950 py-12 px-6">
-          <div className="max-w-6xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-2 opacity-70 dark:opacity-50"><Leaf className="text-emerald-600 dark:text-emerald-400" size={20} /><span className="font-bold text-gray-900 dark:text-white">NutriGenius</span></div>
-            <p className="text-gray-500 dark:text-gray-500 text-sm">© 2025 NutriGenius AI.</p>
+        <footer className="bg-gray-50 dark:bg-gray-900 pt-20 pb-10 border-t border-gray-200 dark:border-gray-800">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 mb-16">
+              {/* Brand & Newsletter */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="flex items-center gap-2">
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg">
+                    <Leaf className="text-emerald-600 dark:text-emerald-400" size={24} />
+                  </div>
+                  <span className="font-bold text-xl text-gray-900 dark:text-white">NutriGenius</span>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Making healthy eating accessible and affordable for everyone through the power of AI.
+                </p>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Subscribe to our newsletter</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                      <input
+                        type="email"
+                        placeholder="Enter your email"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      />
+                    </div>
+                    <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                      Subscribe
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Links Columns */}
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-6">Product</h4>
+                <ul className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Features</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Pricing</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Testimonials</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">API</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-6">Company</h4>
+                <ul className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">About Us</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Careers</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Blog</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Contact</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-6">Resources</h4>
+                <ul className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Community</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Help Center</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Partners</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Status</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-6">Legal</h4>
+                <ul className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Privacy</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Terms</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Cookies</a></li>
+                  <li><a href="#" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Licenses</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6">
+              <p className="text-gray-400 text-sm">© 2025 NutriGenius AI. All rights reserved.</p>
+              <div className="flex items-center gap-6">
+                <a href="#" className="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"><Twitter size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"><Linkedin size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
+              </div>
+            </div>
           </div>
         </footer>
       </div>
