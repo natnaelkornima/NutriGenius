@@ -96,11 +96,11 @@ const generateAffordablePlanAI = async (userProfile) => {
     // Fallback immediately if no key
     return {
       date: new Date().toISOString(),
-      total_estimated_cost: 5.50,
+      total_estimated_cost: 150,
       meals: [
-        { type: 'Breakfast', name: 'Budget Oats (Demo)', cost: 0.50, calories: 300, ingredients: [{ name: 'Oats', amount: '1 cup', cost: 0.50 }], instructions: 'Boil water, add oats.' },
-        { type: 'Lunch', name: 'Rice & Beans (Demo)', cost: 2.00, calories: 600, ingredients: [{ name: 'Rice', amount: '1 cup', cost: 0.50 }, { name: 'Beans', amount: '1 can', cost: 1.50 }], instructions: 'Cook rice, heat beans.' },
-        { type: 'Dinner', name: 'Egg Scramble (Demo)', cost: 3.00, calories: 400, ingredients: [{ name: 'Eggs', amount: '3', cost: 1.00 }, { name: 'Toast', amount: '2 slices', cost: 2.00 }], instructions: 'Scramble eggs.' }
+        { type: 'Breakfast', name: 'Firfir (Demo)', cost: 40, calories: 350, ingredients: [{ name: 'Injera', amount: '1 roll', cost: 15 }, { name: 'Berbere Sauce', amount: '1 ladle', cost: 25 }], instructions: 'Mix torn injera with spicy sauce.' },
+        { type: 'Lunch', name: 'Shiro Wot (Demo)', cost: 60, calories: 500, ingredients: [{ name: 'Shiro Powder', amount: '100g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Simmer shiro powder with garlic and oil.' },
+        { type: 'Dinner', name: 'Atkilt Wot (Demo)', cost: 50, calories: 400, ingredients: [{ name: 'Cabbage/Potato', amount: '200g', cost: 30 }, { name: 'Carrots', amount: '100g', cost: 20 }], instructions: 'Sauté vegetables with turmeric.' }
       ]
     };
   }
@@ -109,10 +109,10 @@ const generateAffordablePlanAI = async (userProfile) => {
   const varietySeed = Math.floor(Math.random() * 10000);
 
   const promptText = `
-    You are NutriGenius, an expert budget nutritionist. 
+    You are NutriGenius, an expert Ethiopian nutritionist. 
     Generate a 1-day meal plan (Breakfast, Lunch, Dinner) for a user with this profile:
     - Goal: ${userProfile.goals}
-    - Weekly Budget: $${userProfile.weeklyBudget}
+    - Weekly Budget: ${userProfile.weeklyBudget} ETB
     - Dietary Restrictions: ${userProfile.dietaryRestrictions?.join(', ') || 'None'}
     - Allergies: ${userProfile.allergies?.join(', ') || 'None'}
     - Activity Level: ${userProfile.activityLevel}
@@ -120,9 +120,10 @@ const generateAffordablePlanAI = async (userProfile) => {
     VARIATION SEED: ${varietySeed} (Ensure this plan is different from previous generic outputs).
 
     CRITICAL REQUIREMENTS:
-    1. Use affordable ingredients (rice, beans, eggs, seasonal veg, frozen veg).
-    2. Total estimated cost for the day must be low (aim for under $15/day total).
-    3. Return ONLY valid JSON without markdown formatting.
+    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt).
+    2. Use local Ethiopian ingredients available in markets.
+    3. Total estimated cost for the day must be realistic in ETB (aim for under 300 ETB/day for budget, up to 1000 ETB for premium).
+    4. Return ONLY valid JSON without markdown formatting.
     
     JSON Structure:
     {
