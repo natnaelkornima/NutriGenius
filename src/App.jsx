@@ -543,7 +543,7 @@ export default function NutriGenius() {
         <footer className="bg-white dark:bg-gray-950 py-12 px-6">
           <div className="max-w-6xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2 opacity-70 dark:opacity-50"><Leaf className="text-emerald-600 dark:text-emerald-400" size={20} /><span className="font-bold text-gray-900 dark:text-white">NutriGenius</span></div>
-            <p className="text-gray-500 dark:text-gray-500 text-sm">© 2024 NutriGenius AI.</p>
+            <p className="text-gray-500 dark:text-gray-500 text-sm">© 2025 NutriGenius AI.</p>
           </div>
         </footer>
       </div>
