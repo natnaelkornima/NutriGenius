@@ -1136,7 +1136,7 @@ export default function NutriGenius() {
         </div>
 
         <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
-          <button onClick={() => setView('dashboard')} className="absolute top-8 left-8 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <button onClick={() => setView('dashboard')} className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft size={20} />
           </button>
 
@@ -1342,7 +1342,7 @@ export default function NutriGenius() {
                   <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-xl shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
                     <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
                   </div>
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2 right-2 flex gap-2">
                     <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-emerald-600 shadow-sm backdrop-blur-sm">
                       <Edit2 size={14} />
                     </button>
@@ -1381,6 +1381,29 @@ export default function NutriGenius() {
   const RecipeModal = () => {
     if (!selectedMeal) return null;
 
+    const handleDeleteMeal = async () => {
+      if (!window.confirm("Are you sure you want to delete this meal?")) return;
+      try {
+        const updatedMeals = selectedPlan.meals.filter(m => m !== selectedMeal);
+        const updatedCost = updatedMeals.reduce((acc, m) => acc + m.cost, 0);
+        const updatedCalories = updatedMeals.reduce((acc, m) => acc + m.calories, 0);
+
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), {
+          meals: updatedMeals,
+          total_estimated_cost: updatedCost,
+          total_calories: updatedCalories
+        });
+
+        // Update local state
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, meals: updatedMeals, total_estimated_cost: updatedCost } : p);
+        setMealPlans(updatedPlans);
+        setSelectedMeal(null); // Close modal
+      } catch (e) {
+        console.error(e);
+        alert("Failed to delete meal.");
+      }
+    };
+
     // Dynamic Modal Header Styles
     const getHeaderStyle = (type) => {
       switch (type) {
@@ -1415,6 +1438,14 @@ export default function NutriGenius() {
               className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer"
             >
               <X size={20} className="text-white" />
+            </button>
+
+            <button
+              onClick={handleDeleteMeal}
+              className="absolute top-4 right-16 bg-white/20 hover:bg-red-500/80 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer group"
+              title="Delete Meal"
+            >
+              <Trash2 size={20} className="text-white group-hover:scale-110 transition-transform" />
             </button>
 
             <div className="relative z-10">
