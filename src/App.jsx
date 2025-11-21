@@ -63,7 +63,8 @@ import {
   Instagram,
   Linkedin,
   Facebook,
-  Mail
+  Mail,
+  CreditCard
 } from 'lucide-react';
 
 // --- FIREBASE CONFIGURATION ---
@@ -249,6 +250,147 @@ const SelectionCard = ({ selected, onClick, icon: Icon, title, desc }) => (
     {selected && <CheckCircle2 size={20} className="text-emerald-500 fill-emerald-100 dark:fill-emerald-900 hidden sm:block" />}
   </div>
 );
+
+const PricingView = ({ onBack, userEmail }) => {
+  const [loading, setLoading] = useState(null);
+
+  const plans = [
+    {
+      id: 'basic',
+      name: 'Basic',
+      price: 0,
+      period: '/mo',
+      desc: 'Essential meal planning',
+      features: ['Daily Meal Plans', 'Basic Recipes', 'Shopping List', 'Standard Support'],
+      color: 'gray',
+      btnText: 'Current Plan'
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 199,
+      period: '/mo',
+      desc: 'Advanced AI & Analytics',
+      features: ['Everything in Basic', 'Advanced AI Models', 'Nutritional Analysis', 'Unlimited History', 'Priority Support'],
+      color: 'emerald',
+      recommended: true,
+      btnText: 'Upgrade to Pro'
+    },
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: 499,
+      period: '/mo',
+      desc: 'Personalized Coaching',
+      features: ['Everything in Pro', '1-on-1 Nutritionist Chat', 'Custom Diet Plans', 'Family Mode', 'Exclusive Recipes'],
+      color: 'purple',
+      btnText: 'Get Premium'
+    }
+  ];
+
+  const handleSubscribe = async (plan) => {
+    if (plan.price === 0) return;
+    setLoading(plan.id);
+
+    // Chapa Integration
+    const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
+    const tx_ref = `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    try {
+      const response = await fetch("https://api.chapa.co/v1/transaction/initialize", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${CHAPA_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          amount: plan.price,
+          currency: "ETB",
+          email: userEmail,
+          first_name: "NutriGenius",
+          last_name: "User",
+          tx_ref: tx_ref,
+          callback_url: window.location.origin,
+          return_url: window.location.origin,
+          customization: {
+            title: `NutriGenius ${plan.name}`,
+            description: `Subscription to ${plan.name} Plan`
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (data.status === 'success' && data.data?.checkout_url) {
+        window.location.href = data.data.checkout_url;
+      } else {
+        alert("Payment initialization failed. Please check your API Key in .env");
+        console.error("Chapa failed:", data);
+      }
+    } catch (err) {
+      console.error("Payment Error:", err);
+      alert("Connection error. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 font-sans transition-colors duration-300">
+      <div className="max-w-6xl mx-auto py-12">
+        <button onClick={onBack} className="mb-8 flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+          <ArrowLeft size={20} /> Back to Dashboard
+        </button>
+
+        <div className="text-center mb-16 space-y-4">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Simple, Transparent Pricing</h2>
+          <p className="text-xl text-gray-500 dark:text-gray-400">Choose the plan that fits your health goals.</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {plans.map((plan) => (
+            <div key={plan.id} className={`relative bg-white dark:bg-gray-900 rounded-3xl p-8 border-2 flex flex-col ${plan.recommended ? 'border-emerald-500 shadow-2xl shadow-emerald-500/10 scale-105 z-10' : 'border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all'}`}>
+              {plan.recommended && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                  Most Popular
+                </div>
+              )}
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">{plan.desc}</p>
+              </div>
+              <div className="mb-8">
+                <span className="text-4xl font-bold text-gray-900 dark:text-white">{plan.price === 0 ? 'Free' : `ETB ${plan.price}`}</span>
+                <span className="text-gray-500 dark:text-gray-400">{plan.period}</span>
+              </div>
+              <ul className="space-y-4 mb-8 flex-1">
+                {plan.features.map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                    <CheckCircle2 size={18} className={`shrink-0 ${plan.id === 'basic' ? 'text-gray-400' : 'text-emerald-500'}`} />
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => handleSubscribe(plan)}
+                disabled={loading === plan.id || plan.price === 0}
+                variant={plan.recommended ? 'primary' : 'secondary'}
+                className="w-full"
+              >
+                {loading === plan.id ? 'Processing...' : plan.btnText}
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 text-center">
+          <p className="text-gray-400 text-sm flex items-center justify-center gap-2">
+            <CreditCard size={16} /> Secure payments powered by Chapa
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- MAIN APPLICATION ---
 
@@ -725,6 +867,7 @@ export default function NutriGenius() {
                       {isDarkMode ? <div className="w-8 h-4 bg-emerald-500 rounded-full relative"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full" /></div> : <div className="w-8 h-4 bg-gray-300 rounded-full relative"><div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full" /></div>}
                     </button>
                     <button onClick={() => { setView('profile'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><User size={18} className="text-gray-400" /> Edit Profile</button>
+                    <button onClick={() => { setView('pricing'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><CreditCard size={18} className="text-gray-400" /> Upgrade Plan</button>
                     <button onClick={async () => { await signOut(auth); setView('landing'); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium text-red-600 dark:text-red-400 transition-colors"><LogOut size={18} className="text-red-400" /> Sign Out</button>
                   </div>
                 </div>
@@ -1195,6 +1338,7 @@ export default function NutriGenius() {
   if (view === 'landing') return <LandingPage />;
   if (view === 'auth') return <AuthView />;
   if (view === 'profile') return <ProfileView />;
+  if (view === 'pricing') return <PricingView onBack={() => setView('dashboard')} userEmail={user?.email} />;
   return (
     <>
       <DashboardView />
