@@ -297,7 +297,8 @@ const PricingView = ({ onBack, userEmail }) => {
     const tx_ref = `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     try {
-      const response = await fetch("https://api.chapa.co/v1/transaction/initialize", {
+      // Use local proxy to avoid CORS issues
+      const response = await fetch("/api/chapa/transaction/initialize", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${CHAPA_KEY}`,
