@@ -86,88 +86,135 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
-import { mealDatabase } from './data/meals';
-
-// --- LOCAL MEAL GENERATION ---
+// --- GEMINI AI INTEGRATION ---
 const generateAffordablePlanAI = async (userProfile) => {
-  // Calculate daily budget from monthly budget (assuming 30 days)
-  const monthlyBudget = parseFloat(userProfile.weeklyBudget) || 0;
-  const dailyBudget = monthlyBudget / 30;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
-  // Filter meals that fit within the daily budget
-  // We allow a small buffer (e.g., +10%) or just strict filtering
-  const affordableMeals = mealDatabase.filter(meal => meal.total <= dailyBudget * 1.1);
-
-  // If no meals fit, return the cheapest one available
-  let selectedPlan;
-  if (affordableMeals.length === 0) {
-    // Sort by total price ascending and pick the first
-    selectedPlan = [...mealDatabase].sort((a, b) => a.total - b.total)[0];
-  } else {
-    // Pick a random meal from the affordable options
-    const randomIndex = Math.floor(Math.random() * affordableMeals.length);
-    selectedPlan = affordableMeals[randomIndex];
+  if (!apiKey) {
+    console.warn("Missing Gemini API Key");
+    // Fallback immediately if no key
+    return {
+      date: new Date().toISOString(),
+      total_estimated_cost: 150,
+      meals: [
+        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
+        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
+        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
+      ]
+    };
   }
 
-  // Construct the response object matching the expected format
-  return {
-    date: new Date().toISOString(),
-    total_estimated_cost: selectedPlan.total,
-    meals: [
-      {
-        type: 'Breakfast',
-        name: selectedPlan.breakfast.name,
-        cost: selectedPlan.breakfast.price,
-        calories: 400, // Placeholder as CSV didn't have calories
-        ingredients: [],
-        instructions: 'Enjoy your delicious breakfast!'
-      },
-      {
-        type: 'Lunch',
-        name: selectedPlan.lunch.name,
-        cost: selectedPlan.lunch.price,
-        calories: 600,
-        ingredients: [],
-        instructions: 'A hearty lunch to keep you going.'
-      },
-      {
-        type: 'Dinner',
-        name: selectedPlan.dinner.name,
-        cost: selectedPlan.dinner.price,
-        calories: 500,
-        ingredients: [],
-        instructions: 'A nutritious dinner to end the day.'
-      }
-    ]
-  };
+  // Added randomization to ensure variety on subsequent calls
+  const varietySeed = Math.floor(Math.random() * 10000);
+
+  const promptText = `
+    You are NutriGenius, an expert Ethiopian nutritionist. 
+    Generate a 1-day meal plan (Breakfast, Lunch, Dinner) for a user with this profile:
+    - Goal: ${userProfile.goals}
+    - Weekly Budget: ${userProfile.weeklyBudget} ETB
+    - Dietary Restrictions: ${userProfile.dietaryRestrictions?.join(', ') || 'None'}
+    - Allergies: ${userProfile.allergies?.join(', ') || 'None'}
+    - Activity Level: ${userProfile.activityLevel}
+    
+    VARIATION SEED: ${varietySeed} (Ensure this plan is different from previous generic outputs).
+
+    CRITICAL REQUIREMENTS:
+    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot).
+    2. Use local Ethiopian ingredients available in markets (Mercato, local shops).
+    3. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
+       - Example: 1 Injera ~15-20 ETB, Shiro powder ~300 ETB/kg.
+       - Total daily cost should be realistic for the budget provided.
+    4. Return ONLY valid JSON without markdown formatting.
+    
+    JSON Structure:
+    {
+      "date": "${new Date().toISOString()}",
+      "total_estimated_cost": Number,
+      "meals": [
+        {
+          "type": "Breakfast",
+          "name": "String",
+          "cost": Number,
+          "calories": Number,
+          "ingredients": [{"name": "String", "amount": "String", "cost": Number}],
+          "instructions": "String"
+        },
+        { "type": "Lunch", ... },
+        { "type": "Dinner", ... }
+      ]
+    }
+  `;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorBody.slice(0, 100)}`);
+    }
+
+    const data = await response.json();
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(textResponse);
+
+  } catch (error) {
+    console.error("AI Error:", error);
+    return {
+      date: new Date().toISOString(),
+      total_estimated_cost: 150,
+      meals: [
+        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
+        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
+        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
+      ]
+    };
+  }
 };
 
 const analyzeDailyPlanAI = async (plan) => {
-  // Local analysis based on meal data
-  const totalCalories = plan.meals.reduce((sum, meal) => sum + meal.calories, 0);
-  const totalCost = plan.meals.reduce((sum, meal) => sum + meal.cost, 0);
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) return { summary: "API Key missing. Please add VITE_GEMINI_API_KEY to .env file.", score: 0 };
 
-  // Simple scoring based on calorie range and cost
-  let score = 7; // Base score
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  // Adjust score based on calorie balance (ideal 1400-2000 kcal/day)
-  if (totalCalories >= 1400 && totalCalories <= 2000) {
-    score += 1;
-  } else if (totalCalories < 1200 || totalCalories > 2500) {
-    score -= 1;
+  const promptText = `
+    Analyze this daily meal plan combination:
+    Breakfast: ${plan.meals[0].name} (${plan.meals[0].calories}kcal)
+    Lunch: ${plan.meals[1].name} (${plan.meals[1].calories}kcal)
+    Dinner: ${plan.meals[2].name} (${plan.meals[2].calories}kcal)
+
+    Provide a 2-sentence nutritional summary focusing on macro balance and satiety. 
+    Then provide a score out of 10 for "Nutritional Balance".
+    
+    Output Format JSON:
+    {
+      "summary": "String",
+      "score": Number
+    }
+  `;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      })
+    });
+    const data = await response.json();
+    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+  } catch (error) {
+    return { summary: "Balanced meal set with good protein distribution.", score: 8 };
   }
-
-  // Adjust score based on cost efficiency
-  if (totalCost < 500) {
-    score += 1; // Budget-friendly
-  }
-
-  // Cap score between 1-10
-  score = Math.max(1, Math.min(10, score));
-
-  const summary = `This balanced Ethiopian meal plan provides ${totalCalories} kcal for only ${totalCost.toFixed(0)} ETB. Great combination of traditional dishes with good nutritional value and affordability.`;
-
-  return { summary, score };
 };
 
 const REVIEWS = [
@@ -890,10 +937,6 @@ export default function NutriGenius() {
 
   const DashboardView = () => {
     const [showSettings, setShowSettings] = useState(false);
-    const [calendarOpen, setCalendarOpen] = useState(true);
-    const [selectedDay, setSelectedDay] = useState(null);
-    const [dayAnalysis, setDayAnalysis] = useState(null);
-    const [analyzingDay, setAnalyzingDay] = useState(false);
     const settingsRef = useRef(null);
 
     // Monthly Budget Logic
@@ -920,42 +963,6 @@ export default function NutriGenius() {
       return plan ? plan.total_estimated_cost : 0;
     };
 
-    const getDayPlans = (day) => {
-      return monthlyPlans.filter(p => new Date(p.date).getDate() === day);
-    };
-
-    const handleDayClick = async (day) => {
-      const plans = getDayPlans(day);
-      if (plans.length === 0) {
-        setSelectedDay(null);
-        setDayAnalysis(null);
-        return;
-      }
-
-      setSelectedDay(day);
-      setAnalyzingDay(true);
-
-      // Aggregate day data
-      const totalCost = plans.reduce((sum, p) => sum + p.total_estimated_cost, 0);
-      const totalCalories = plans.reduce((sum, p) => {
-        return sum + p.meals.reduce((mSum, m) => mSum + m.calories, 0);
-      }, 0);
-      const allMeals = plans.flatMap(p => p.meals);
-
-      // Simple local analysis (no API)
-      const analysis = {
-        day: `${now.toLocaleString('default', { month: 'long' })} ${day}, ${currentYear}`,
-        totalCost,
-        totalCalories,
-        mealCount: allMeals.length,
-        summary: `On this day, you consumed ${allMeals.length} meals totaling ${totalCalories} kcal for ${totalCost.toFixed(0)} ETB. This represents ${((totalCost / budget) * 100).toFixed(1)}% of your monthly budget.`,
-        meals: allMeals.map(m => `${m.type}: ${m.name} (${m.cost} ETB, ${m.calories} kcal)`)
-      };
-
-      setDayAnalysis(analysis);
-      setAnalyzingDay(false);
-    };
-
     useEffect(() => {
       const handleClickOutside = (event) => { if (settingsRef.current && !settingsRef.current.contains(event.target)) setShowSettings(false); };
       document.addEventListener("mousedown", handleClickOutside);
@@ -963,10 +970,9 @@ export default function NutriGenius() {
     }, []);
 
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans transition-colors duration-300 flex flex-col">
-        {/* Header - Full Width */}
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-20 font-sans transition-colors duration-300">
         <div className="bg-white dark:bg-gray-900 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm">
-          <div className="max-w-7xl mx-auto flex justify-between items-center relative">
+          <div className="max-w-5xl mx-auto flex justify-between items-center relative">
             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-lg">
               <img src={isDarkMode ? "/dark_mood.png" : "/favicon.png"} alt="Logo" className="w-8 h-8 object-contain" /> NutriGenius
             </div>
@@ -1016,607 +1022,537 @@ export default function NutriGenius() {
           </div>
         </div>
 
-        {/* Main Content + Sidebar Container */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-auto">
-            <div className="max-w-5xl mx-auto p-6 space-y-8 pr-0 lg:pr-6">
-              {/* Budget Hero */}
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                  <div>
-                    <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
-                    <div className="text-5xl font-bold tracking-tight mb-2">ETB {spent} <span className="text-2xl text-gray-500 font-normal">/ ETB {budget}</span></div>
-                    <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block">{100 - Math.round(percent)}% Remaining</div>
-                  </div>
-                  <div className="w-full md:w-64">
-                    <div className="h-3 bg-gray-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${percent > 90 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${percent}%` }} /></div>
-                  </div>
-                </div>
+        <div className="max-w-5xl mx-auto p-6 space-y-8">
+          {/* Budget Hero */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
+                <div className="text-5xl font-bold tracking-tight mb-2">ETB {spent} <span className="text-2xl text-gray-500 font-normal">/ ETB {budget}</span></div>
+                <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block">{100 - Math.round(percent)}% Remaining</div>
               </div>
-
-
-
-              {/* Action Bar */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">My Meal Plans</h2>
-                <Button onClick={handleGenerate} disabled={generating} className="shadow-emerald-200 dark:shadow-none w-full sm:w-auto">
-                  {generating ? "Chef AI is Cooking..." : "Generate New Plan"}
-                </Button>
+              <div className="w-full md:w-64">
+                <div className="h-3 bg-gray-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${percent > 90 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${percent}%` }} /></div>
               </div>
+            </div>
+          </div>
 
-              {/* Plans Grid */}
-              {mealPlans.length === 0 && !generating ? (
-                <div className="bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 p-12 text-center">
-                  <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><ChefHat size={24} /></div>
-                  <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-1">No meals planned yet</h3>
-                  <p className="text-gray-500 dark:text-gray-400">Generate your first affordable plan above.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                  {mealPlans.map((plan) => (
-                    <div
-                      key={plan.id}
-                      onClick={() => setSelectedPlan(plan)} // Trigger the new Analysis View
-                      className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative group cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
-                    >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan.id); }}
-                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
-                      >
-                        <Trash2 size={18} />
-                      </button>
 
-                      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-50 dark:border-gray-800 pr-8">
-                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-medium">
-                          <Calendar size={18} className="text-emerald-500" />
-                          {new Date(plan.date).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                        </div>
-                        <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold px-3 py-1 rounded-full text-sm">
-                          ETB {plan.total_estimated_cost.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        {plan.meals.map((meal, i) => (
-                          <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
-                            <span className="font-medium flex-1 truncate">{meal.name}</span>
-                            <span className="text-xs bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded">ETB {meal.cost.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-800 text-center text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center justify-center gap-1">
-                        View Daily Analysis & Notes <ArrowRight size={14} />
-                      </div>
+
+          {/* Action Bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">My Meal Plans</h2>
+            <Button onClick={handleGenerate} disabled={generating} className="shadow-emerald-200 dark:shadow-none w-full sm:w-auto">
+              {generating ? "Chef AI is Cooking..." : "Generate New Plan"}
+            </Button>
+          </div>
+
+          {/* Plans Grid */}
+          {mealPlans.length === 0 && !generating ? (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 p-12 text-center">
+              <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><ChefHat size={24} /></div>
+              <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-1">No meals planned yet</h3>
+              <p className="text-gray-500 dark:text-gray-400">Generate your first affordable plan above.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+              {mealPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan)} // Trigger the new Analysis View
+                  className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative group cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan.id); }}
+                    className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-50 dark:border-gray-800 pr-8">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-medium">
+                      <Calendar size={18} className="text-emerald-500" />
+                      {new Date(plan.date).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </div>
-                  ))}
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* Calendar Sidebar */}
-          <div className={`${calendarOpen ? 'w-80' : 'w-0'} lg:w-80 transition-all duration-300 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex-shrink-0 overflow-hidden fixed lg:relative right-0 top-0 h-full z-30 shadow-xl lg:shadow-none`}>
-            <div className="h-full flex flex-col">
-              {/* Sidebar Header */}
-              <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Calendar size={16} className="text-emerald-500" />
-                  {now.toLocaleString('default', { month: 'long' })}
-                </h3>
-                <button onClick={() => setCalendarOpen(!calendarOpen)} className="lg:hidden p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
-                  <ChevronRight size={18} className="text-gray-500" />
-                </button>
-              </div>
-
-              {/* Calendar */}
-              <div className="p-4 overflow-auto flex-1">
-                <div className="grid grid-cols-7 gap-1 mb-2 text-center">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                    <div key={d} className="text-[10px] font-bold text-gray-400">{d}</div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
-                  {days.map(day => {
-                    const cost = getDailyCost(day);
-                    const isToday = day === now.getDate();
-                    const isSelected = selectedDay === day;
-                    return (
-                      <button
-                        key={day}
-                        onClick={() => handleDayClick(day)}
-                        className={`aspect-square rounded-lg flex flex-col items-center justify-center text-[10px] relative transition-all cursor-pointer
-                        ${cost > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}
-                        ${isToday ? 'ring-1 ring-emerald-500' : ''}
-                        ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
-                      >
-                        <span>{day}</span>
-                        {cost > 0 && <span className="text-[8px] mt-0.5">{Math.round(cost)}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Day Analysis Panel */}
-                {selectedDay && (
-                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white">Day {selectedDay} Summary</h4>
-                      <button onClick={() => { setSelectedDay(null); setDayAnalysis(null); }} className="text-gray-400 hover:text-gray-600">
-                        <X size={14} />
-                      </button>
-                    </div>
-                    {analyzingDay ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="animate-spin text-emerald-500" size={20} />
-                      </div>
-                    ) : dayAnalysis ? (
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>
-                          <span className="font-bold text-gray-900 dark:text-white">{dayAnalysis.totalCost.toFixed(0)} ETB</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Calories:</span>
-                          <span className="font-bold text-gray-900 dark:text-white">{dayAnalysis.totalCalories} kcal</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Meals:</span>
-                          <span className="font-bold text-gray-900 dark:text-white">{dayAnalysis.mealCount}</span>
-                        </div>
-                        <p className="text-gray-700 dark:text-gray-300 text-[10px] leading-relaxed mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                          {dayAnalysis.summary}
-                        </p>
-                      </div>
-                    ) : null}
+                    <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold px-3 py-1 rounded-full text-sm">
+                      ETB {plan.total_estimated_cost.toFixed(2)}
+                    </span>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Calendar Toggle Button */}
-          {!calendarOpen && (
-            <button
-              onClick={() => setCalendarOpen(true)}
-              className="lg:hidden fixed right-4 bottom-24 bg-emerald-600 text-white p-3 rounded-full shadow-lg z-40"
-            >
-              <Calendar size={20} />
-            </button>
-          )}
-        </div>
-        {/* End flex wrapper */}
-      </div>
-      </div >
-    );
-};
-
-const ProfileView = () => {
-  const [selectedGoal, setSelectedGoal] = useState(profileData?.goals || 'Weight Loss');
-  const [selectedActivity, setSelectedActivity] = useState(profileData?.activityLevel || 'Moderate');
-  // Profile Image Preview State
-  const [previewImage, setPreviewImage] = useState(profileData?.profileImage || null);
-
-  const GOALS = [
-    { id: 'Weight Loss', icon: Scale, desc: 'Calorie Deficit' },
-    { id: 'Maintenance', icon: Activity, desc: 'Balance' },
-    { id: 'Muscle Gain', icon: Dumbbell, desc: 'High Protein' },
-    { id: 'Budget', icon: DollarSign, desc: 'Max Savings' }
-  ];
-
-  const ACTIVITIES = [
-    { id: 'Sedentary', icon: Coffee, desc: 'Desk Job' },
-    { id: 'Moderate', icon: User, desc: 'Light Exercise' },
-    { id: 'Active', icon: Zap, desc: 'Daily Workout' }
-  ];
-
-  // Helper for image preview
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreviewImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden">
-
-      {/* Floating Food Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {['🥗', '🍎', '🥑', '🥕', '🍇', '🥦', '🥩', '🥚', '🧀', '🍗', '🌽', '🍅'].map((emoji, i) => (
-          <div
-            key={i}
-            className="absolute text-4xl opacity-20 animate-[float_6s_ease-in-out_infinite] select-none"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${5 + Math.random() * 5}s`,
-              fontSize: `${20 + Math.random() * 40}px`,
-              filter: 'blur(1px)'
-            }}
-          >
-            {emoji}
-          </div>
-        ))}
-        {/* Sparkles */}
-        {[...Array(10)].map((_, i) => (
-          <div
-            key={`sparkle-${i}`}
-            className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-[twinkle_3s_ease-in-out_infinite]"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
-        <button onClick={() => setView('dashboard')} className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-          <ArrowLeft size={20} />
-        </button>
-
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Personalize Your Plan</h2>
-          <p className="text-gray-500 dark:text-gray-400">Help AI find the best deals for your body type.</p>
-        </div>
-
-        <form onSubmit={handleSaveProfile} className="space-y-8">
-
-          {/* Image Upload Section */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 relative group">
-              {previewImage ? <img src={previewImage} alt="Profile" className="w-full h-full object-cover" /> : <User size={32} className="text-gray-400" />}
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="text-white" size={24} />
-              </div>
-              <input type="file" name="profileImage" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </div>
-            <span className="text-xs text-gray-500">Click to upload photo</span>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Primary Goal</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {GOALS.map(goal => (
-                <SelectionCard
-                  key={goal.id}
-                  selected={selectedGoal === goal.id}
-                  onClick={() => setSelectedGoal(goal.id)}
-                  icon={goal.icon}
-                  title={goal.id}
-                  desc={goal.desc}
-                />
+                  <div className="space-y-2">
+                    {plan.meals.map((meal, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+                        <span className="font-medium flex-1 truncate">{meal.name}</span>
+                        <span className="text-xs bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded">ETB {meal.cost.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-800 text-center text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center justify-center gap-1">
+                    View Daily Analysis & Notes <ArrowRight size={14} />
+                  </div>
+                </div>
               ))}
             </div>
-            <input type="hidden" name="goals" value={selectedGoal} />
+          )}
+
+          {/* Calendar Tracker (Moved) */}
+          <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h3>
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
+                {monthlyPlans.length} Days Planned
+              </span>
+            </div>
+            <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                <div key={d} className="text-xs font-bold text-gray-400">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
+              {days.map(day => {
+                const cost = getDailyCost(day);
+                const isToday = day === now.getDate();
+                return (
+                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs relative transition-all ${cost > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-800' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isToday ? 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-900' : ''}`}>
+                    <span>{day}</span>
+                    {cost > 0 && <span className="text-[10px] mt-0.5">{Math.round(cost)}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ProfileView = () => {
+    const [selectedGoal, setSelectedGoal] = useState(profileData?.goals || 'Weight Loss');
+    const [selectedActivity, setSelectedActivity] = useState(profileData?.activityLevel || 'Moderate');
+    // Profile Image Preview State
+    const [previewImage, setPreviewImage] = useState(profileData?.profileImage || null);
+
+    const GOALS = [
+      { id: 'Weight Loss', icon: Scale, desc: 'Calorie Deficit' },
+      { id: 'Maintenance', icon: Activity, desc: 'Balance' },
+      { id: 'Muscle Gain', icon: Dumbbell, desc: 'High Protein' },
+      { id: 'Budget', icon: DollarSign, desc: 'Max Savings' }
+    ];
+
+    const ACTIVITIES = [
+      { id: 'Sedentary', icon: Coffee, desc: 'Desk Job' },
+      { id: 'Moderate', icon: User, desc: 'Light Exercise' },
+      { id: 'Active', icon: Zap, desc: 'Daily Workout' }
+    ];
+
+    // Helper for image preview
+    const handleImageChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => setPreviewImage(reader.result);
+        reader.readAsDataURL(file);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden">
+
+        {/* Floating Food Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {['🥗', '🍎', '🥑', '🥕', '🍇', '🥦', '🥩', '🥚', '🧀', '🍗', '🌽', '🍅'].map((emoji, i) => (
+            <div
+              key={i}
+              className="absolute text-4xl opacity-20 animate-[float_6s_ease-in-out_infinite] select-none"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${5 + Math.random() * 5}s`,
+                fontSize: `${20 + Math.random() * 40}px`,
+                filter: 'blur(1px)'
+              }}
+            >
+              {emoji}
+            </div>
+          ))}
+          {/* Sparkles */}
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={`sparkle-${i}`}
+              className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-[twinkle_3s_ease-in-out_infinite]"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
+          <button onClick={() => setView('dashboard')} className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            <ArrowLeft size={20} />
+          </button>
+
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Personalize Your Plan</h2>
+            <p className="text-gray-500 dark:text-gray-400">Help AI find the best deals for your body type.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
-            <Input name="weight" type="number" label="Weight (kg)" defaultValue={profileData?.metrics?.weight} required />
-            <Input name="height" type="number" label="Height (cm)" defaultValue={profileData?.metrics?.height} required />
+          <form onSubmit={handleSaveProfile} className="space-y-8">
+
+            {/* Image Upload Section */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 relative group">
+                {previewImage ? <img src={previewImage} alt="Profile" className="w-full h-full object-cover" /> : <User size={32} className="text-gray-400" />}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white" size={24} />
+                </div>
+                <input type="file" name="profileImage" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+              <span className="text-xs text-gray-500">Click to upload photo</span>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Primary Goal</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {GOALS.map(goal => (
+                  <SelectionCard
+                    key={goal.id}
+                    selected={selectedGoal === goal.id}
+                    onClick={() => setSelectedGoal(goal.id)}
+                    icon={goal.icon}
+                    title={goal.id}
+                    desc={goal.desc}
+                  />
+                ))}
+              </div>
+              <input type="hidden" name="goals" value={selectedGoal} />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+              <Input name="weight" type="number" label="Weight (kg)" defaultValue={profileData?.metrics?.weight} required />
+              <Input name="height" type="number" label="Height (cm)" defaultValue={profileData?.metrics?.height} required />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+              <Input name="budget" type="number" label="Monthly Budget (ETB)" defaultValue={profileData?.weeklyBudget} required />
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Activity Level</label>
+                <div className="flex gap-2">
+                  {ACTIVITIES.map(act => (
+                    <div key={act.id} onClick={() => setSelectedActivity(act.id)} className={`flex-1 cursor-pointer p-3 rounded-xl border text-center transition-all ${selectedActivity === act.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+                      <act.icon size={16} className="mx-auto mb-1" />
+                      <div className="text-xs font-bold">{act.id}</div>
+                    </div>
+                  ))}
+                </div>
+                <input type="hidden" name="activityLevel" value={selectedActivity} />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl space-y-4 border border-gray-100 dark:border-gray-700">
+              <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><ChefHat size={18} /> Dietary Preferences</span>
+              <div className="flex gap-4">
+                {['Vegan', 'Gluten-Free'].map(d => (
+                  <label key={d} className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <input type="checkbox" name={d === 'Vegan' ? 'diet_vegan' : 'diet_gf'} defaultChecked={profileData?.dietaryRestrictions?.includes(d)} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-200">{d}</span>
+                  </label>
+                ))}
+              </div>
+              <Input name="allergies" label="Allergies" placeholder="Peanuts, Soy..." defaultValue={profileData?.allergies?.join(', ')} />
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full py-4 text-lg">Save Profile</Button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // NEW: Detailed Daily Analysis Modal
+  const DailyAnalysisModal = () => {
+    if (!selectedPlan) return null;
+
+    const [notes, setNotes] = useState(selectedPlan.notes || '');
+    const [isEditingNote, setIsEditingNote] = useState(!selectedPlan.notes);
+    const [analysis, setAnalysis] = useState(selectedPlan.aiAnalysis || null);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [savingNote, setSavingNote] = useState(false);
+
+    const handleSaveNotes = async () => {
+      setSavingNote(true);
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes });
+        // Update local state to reflect change without refetch needed immediately
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes } : p);
+        setMealPlans(updatedPlans);
+        setIsEditingNote(false);
+        alert("Notes saved successfully!");
+      } catch (e) {
+        console.error(e);
+        alert("Failed to save notes. Please try again.");
+      }
+      setSavingNote(false);
+    };
+
+    const handleDeleteNote = async () => {
+      if (!window.confirm("Are you sure you want to delete this note?")) return;
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes: "" });
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes: "" } : p);
+        setMealPlans(updatedPlans);
+        setNotes("");
+        setIsEditingNote(true);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to delete note.");
+      }
+    };
+
+    const handleAnalyze = async () => {
+      setAnalyzing(true);
+      try {
+        const result = await analyzeDailyPlanAI(selectedPlan);
+        if (result.score === 0 && result.summary.includes("API Key missing")) {
+          alert(result.summary);
+        } else {
+          await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { aiAnalysis: result });
+          setAnalysis(result);
+          // Update local state
+          const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, aiAnalysis: result } : p);
+          setMealPlans(updatedPlans);
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Analysis failed. Please check your connection.");
+      }
+      setAnalyzing(false);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+
+          {/* Header */}
+          <div className="bg-gray-100 dark:bg-gray-800 p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily Overview</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(selectedPlan.date).toDateString()}</p>
+            </div>
+            <button onClick={() => setSelectedPlan(null)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"><X size={20} /></button>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
-            <Input name="budget" type="number" label="Monthly Budget (ETB)" defaultValue={profileData?.weeklyBudget} required />
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Activity Level</label>
-              <div className="flex gap-2">
-                {ACTIVITIES.map(act => (
-                  <div key={act.id} onClick={() => setSelectedActivity(act.id)} className={`flex-1 cursor-pointer p-3 rounded-xl border text-center transition-all ${selectedActivity === act.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
-                    <act.icon size={16} className="mx-auto mb-1" />
-                    <div className="text-xs font-bold">{act.id}</div>
+          <div className="p-6 overflow-y-auto space-y-6">
+            {/* Meals List */}
+            <div className="grid sm:grid-cols-3 gap-4">
+              {selectedPlan.meals.map((meal, i) => (
+                <div
+                  key={i}
+                  onClick={() => setSelectedMeal(meal)}
+                  className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-emerald-500 transition-colors group"
+                >
+                  <div className="text-xs font-bold text-gray-400 uppercase mb-1">{meal.type}</div>
+                  <div className="font-bold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600 mb-1 truncate">{meal.name}</div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400">{meal.cost.toFixed(2)} ETB • {meal.calories}kcal</div>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Analysis Section */}
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                  <Sparkles size={18} className="text-emerald-500" /> AI Nutritional Analysis
+                </h4>
+                {!analysis && (
+                  <Button onClick={handleAnalyze} disabled={analyzing} variant="primary" className="px-4 py-2 text-xs h-auto">
+                    {analyzing ? "Analyzing..." : "Analyze Day"}
+                  </Button>
+                )}
+              </div>
+              {analysis ? (
+                <div className="animate-in fade-in">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="text-3xl font-bold text-emerald-600">{analysis.score}<span className="text-sm text-gray-400 font-normal">/10</span></div>
+                    <div className="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
+                    <p className="text-sm text-emerald-800 dark:text-emerald-200 italic leading-relaxed">"{analysis.summary}"</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">Click analyze to get a nutritional breakdown of this combination.</p>
+              )}
+            </div>
+
+            {/* User Notes Section */}
+            <div>
+              <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                <FileText size={18} className="text-gray-400" /> Daily Notes
+              </h4>
+
+              {!isEditingNote && notes ? (
+                <div className="relative group rotate-1 hover:rotate-0 transition-transform duration-300">
+                  <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-xl shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
+                    <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-emerald-600 shadow-sm backdrop-blur-sm">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={handleDeleteNote} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-red-600 shadow-sm backdrop-blur-sm">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-2">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="How did you feel today? Any substitutions made?"
+                    className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
+                  />
+                  <div className="mt-3 flex justify-end gap-2">
+                    {notes && !isEditingNote && (
+                      <Button onClick={() => setIsEditingNote(false)} variant="ghost" className="px-4 py-2 text-xs h-auto">
+                        Cancel
+                      </Button>
+                    )}
+                    <Button onClick={handleSaveNotes} disabled={savingNote} variant="secondary" className="px-4 py-2 text-xs h-auto flex items-center gap-2 shadow-lg shadow-emerald-100 dark:shadow-none">
+                      <Save size={14} /> {savingNote ? "Saving..." : "Save Note"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const RecipeModal = () => {
+    if (!selectedMeal) return null;
+
+    const handleDeleteMeal = async () => {
+      if (!window.confirm("Are you sure you want to delete this meal?")) return;
+      try {
+        const updatedMeals = selectedPlan.meals.filter(m => m !== selectedMeal);
+        const updatedCost = updatedMeals.reduce((acc, m) => acc + m.cost, 0);
+        const updatedCalories = updatedMeals.reduce((acc, m) => acc + m.calories, 0);
+
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), {
+          meals: updatedMeals,
+          total_estimated_cost: updatedCost,
+          total_calories: updatedCalories
+        });
+
+        // Update local state
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, meals: updatedMeals, total_estimated_cost: updatedCost } : p);
+        setMealPlans(updatedPlans);
+        setSelectedMeal(null); // Close modal
+      } catch (e) {
+        console.error(e);
+        alert("Failed to delete meal.");
+      }
+    };
+
+    // Dynamic Modal Header Styles
+    const getHeaderStyle = (type) => {
+      switch (type) {
+        case 'Breakfast': return 'bg-orange-400 text-white';
+        case 'Lunch': return 'bg-emerald-500 text-white';
+        case 'Dinner': return 'bg-indigo-600 text-white';
+        default: return 'bg-gray-800 text-white';
+      }
+    };
+
+    const getHeaderIcon = (type) => {
+      switch (type) {
+        case 'Breakfast': return <Sunrise size={100} />;
+        case 'Lunch': return <SunIcon size={100} />;
+        case 'Dinner': return <MoonIcon size={100} />;
+        default: return <ChefHat size={100} />;
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+
+          {/* Dynamic Header */}
+          <div className={`${getHeaderStyle(selectedMeal.type)} p-6 relative overflow-hidden transition-colors`}>
+            <div className="absolute top-0 right-0 opacity-10 transform translate-x-4 -translate-y-4">
+              {getHeaderIcon(selectedMeal.type)}
+            </div>
+
+            <button
+              onClick={() => setSelectedMeal(null)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer"
+            >
+              <X size={20} className="text-white" />
+            </button>
+
+            <button
+              onClick={handleDeleteMeal}
+              className="absolute top-4 right-16 bg-white/20 hover:bg-red-500/80 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer group"
+              title="Delete Meal"
+            >
+              <Trash2 size={20} className="text-white group-hover:scale-110 transition-transform" />
+            </button>
+
+            <div className="relative z-10">
+              <span className="bg-white/20 border border-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2 inline-block backdrop-blur-sm">
+                {selectedMeal.type}
+              </span>
+              <h3 className="text-2xl font-bold mb-1">{selectedMeal.name}</h3>
+              <div className="flex items-center gap-4 text-white/90 text-sm font-medium">
+                <span className="bg-black/10 px-2 py-0.5 rounded backdrop-blur-md">{selectedMeal.cost.toFixed(2)} ETB</span>
+                <span>{selectedMeal.calories} kcal</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 overflow-y-auto">
+            <div className="mb-8">
+              <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4"><ShoppingBag size={18} className="text-emerald-500" /> Ingredients</h4>
+              <div className="space-y-3">
+                {selectedMeal.ingredients.map((ing, i) => (
+                  <div key={i} className="flex justify-between text-sm py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <span className="text-gray-600 dark:text-gray-300 font-medium">{ing.amount} {ing.name}</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{ing.cost.toFixed(2)} ETB</span>
                   </div>
                 ))}
               </div>
-              <input type="hidden" name="activityLevel" value={selectedActivity} />
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 dark:text-white mb-3">Instructions</h4>
+              <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-600 dark:text-gray-300 text-sm leading-relaxed border border-gray-100 dark:border-gray-700">
+                {selectedMeal.instructions}
+              </div>
             </div>
           </div>
-
-          <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl space-y-4 border border-gray-100 dark:border-gray-700">
-            <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><ChefHat size={18} /> Dietary Preferences</span>
-            <div className="flex gap-4">
-              {['Vegan', 'Gluten-Free'].map(d => (
-                <label key={d} className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <input type="checkbox" name={d === 'Vegan' ? 'diet_vegan' : 'diet_gf'} defaultChecked={profileData?.dietaryRestrictions?.includes(d)} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{d}</span>
-                </label>
-              ))}
-            </div>
-            <Input name="allergies" label="Allergies" placeholder="Peanuts, Soy..." defaultValue={profileData?.allergies?.join(', ')} />
-          </div>
-
-          <Button type="submit" disabled={loading} className="w-full py-4 text-lg">Save Profile</Button>
-        </form>
+        </div>
       </div>
-    </div>
-  );
-};
-
-// NEW: Detailed Daily Analysis Modal
-const DailyAnalysisModal = () => {
-  if (!selectedPlan) return null;
-
-  const [notes, setNotes] = useState(selectedPlan.notes || '');
-  const [isEditingNote, setIsEditingNote] = useState(!selectedPlan.notes);
-  const [analysis, setAnalysis] = useState(selectedPlan.aiAnalysis || null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [savingNote, setSavingNote] = useState(false);
-
-  const handleSaveNotes = async () => {
-    setSavingNote(true);
-    try {
-      await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes });
-      // Update local state to reflect change without refetch needed immediately
-      const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes } : p);
-      setMealPlans(updatedPlans);
-      setIsEditingNote(false);
-      alert("Notes saved successfully!");
-    } catch (e) {
-      console.error(e);
-      alert("Failed to save notes. Please try again.");
-    }
-    setSavingNote(false);
+    );
   };
 
-  const handleDeleteNote = async () => {
-    if (!window.confirm("Are you sure you want to delete this note?")) return;
-    try {
-      await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes: "" });
-      const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes: "" } : p);
-      setMealPlans(updatedPlans);
-      setNotes("");
-      setIsEditingNote(true);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete note.");
-    }
-  };
-
-  const handleAnalyze = async () => {
-    setAnalyzing(true);
-    try {
-      const result = await analyzeDailyPlanAI(selectedPlan);
-      if (result.score === 0 && result.summary.includes("API Key missing")) {
-        alert(result.summary);
-      } else {
-        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { aiAnalysis: result });
-        setAnalysis(result);
-        // Update local state
-        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, aiAnalysis: result } : p);
-        setMealPlans(updatedPlans);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Analysis failed. Please check your connection.");
-    }
-    setAnalyzing(false);
-  };
-
+  // --- RENDER ---
+  if (view === 'landing') return <LandingPage />;
+  if (view === 'auth') return <AuthView />;
+  if (view === 'profile') return <ProfileView />;
+  if (view === 'pricing') return <PricingView onBack={() => setView('dashboard')} userEmail={user?.email} />;
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="bg-gray-100 dark:bg-gray-800 p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily Overview</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(selectedPlan.date).toDateString()}</p>
-          </div>
-          <button onClick={() => setSelectedPlan(null)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"><X size={20} /></button>
-        </div>
-
-        <div className="p-6 overflow-y-auto space-y-6">
-          {/* Meals List */}
-          <div className="grid sm:grid-cols-3 gap-4">
-            {selectedPlan.meals.map((meal, i) => (
-              <div
-                key={i}
-                onClick={() => setSelectedMeal(meal)}
-                className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-emerald-500 transition-colors group"
-              >
-                <div className="text-xs font-bold text-gray-400 uppercase mb-1">{meal.type}</div>
-                <div className="font-bold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600 mb-1 truncate">{meal.name}</div>
-                <div className="text-xs text-emerald-600 dark:text-emerald-400">{meal.cost.toFixed(2)} ETB • {meal.calories}kcal</div>
-              </div>
-            ))}
-          </div>
-
-          {/* AI Analysis Section */}
-          <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
-            <div className="flex justify-between items-start mb-4">
-              <h4 className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
-                <Sparkles size={18} className="text-emerald-500" /> AI Nutritional Analysis
-              </h4>
-              {!analysis && (
-                <Button onClick={handleAnalyze} disabled={analyzing} variant="primary" className="px-4 py-2 text-xs h-auto">
-                  {analyzing ? "Analyzing..." : "Analyze Day"}
-                </Button>
-              )}
-            </div>
-            {analysis ? (
-              <div className="animate-in fade-in">
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="text-3xl font-bold text-emerald-600">{analysis.score}<span className="text-sm text-gray-400 font-normal">/10</span></div>
-                  <div className="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
-                  <p className="text-sm text-emerald-800 dark:text-emerald-200 italic leading-relaxed">"{analysis.summary}"</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400 italic">Click analyze to get a nutritional breakdown of this combination.</p>
-            )}
-          </div>
-
-          {/* User Notes Section */}
-          <div>
-            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-              <FileText size={18} className="text-gray-400" /> Daily Notes
-            </h4>
-
-            {!isEditingNote && notes ? (
-              <div className="relative group rotate-1 hover:rotate-0 transition-transform duration-300">
-                <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-xl shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
-                  <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
-                </div>
-                <div className="absolute top-2 right-2 flex gap-2">
-                  <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-emerald-600 shadow-sm backdrop-blur-sm">
-                    <Edit2 size={14} />
-                  </button>
-                  <button onClick={handleDeleteNote} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-red-600 shadow-sm backdrop-blur-sm">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="animate-in fade-in slide-in-from-bottom-2">
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="How did you feel today? Any substitutions made?"
-                  className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
-                />
-                <div className="mt-3 flex justify-end gap-2">
-                  {notes && !isEditingNote && (
-                    <Button onClick={() => setIsEditingNote(false)} variant="ghost" className="px-4 py-2 text-xs h-auto">
-                      Cancel
-                    </Button>
-                  )}
-                  <Button onClick={handleSaveNotes} disabled={savingNote} variant="secondary" className="px-4 py-2 text-xs h-auto flex items-center gap-2 shadow-lg shadow-emerald-100 dark:shadow-none">
-                    <Save size={14} /> {savingNote ? "Saving..." : "Save Note"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <>
+      <DashboardView />
+      <DailyAnalysisModal />
+      <RecipeModal />
+    </>
   );
-};
-
-const RecipeModal = () => {
-  if (!selectedMeal) return null;
-
-  const handleDeleteMeal = async () => {
-    if (!window.confirm("Are you sure you want to delete this meal?")) return;
-    try {
-      const updatedMeals = selectedPlan.meals.filter(m => m !== selectedMeal);
-      const updatedCost = updatedMeals.reduce((acc, m) => acc + m.cost, 0);
-      const updatedCalories = updatedMeals.reduce((acc, m) => acc + m.calories, 0);
-
-      await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), {
-        meals: updatedMeals,
-        total_estimated_cost: updatedCost,
-        total_calories: updatedCalories
-      });
-
-      // Update local state
-      const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, meals: updatedMeals, total_estimated_cost: updatedCost } : p);
-      setMealPlans(updatedPlans);
-      setSelectedMeal(null); // Close modal
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete meal.");
-    }
-  };
-
-  // Dynamic Modal Header Styles
-  const getHeaderStyle = (type) => {
-    switch (type) {
-      case 'Breakfast': return 'bg-orange-400 text-white';
-      case 'Lunch': return 'bg-emerald-500 text-white';
-      case 'Dinner': return 'bg-indigo-600 text-white';
-      default: return 'bg-gray-800 text-white';
-    }
-  };
-
-  const getHeaderIcon = (type) => {
-    switch (type) {
-      case 'Breakfast': return <Sunrise size={100} />;
-      case 'Lunch': return <SunIcon size={100} />;
-      case 'Dinner': return <MoonIcon size={100} />;
-      default: return <ChefHat size={100} />;
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-
-        {/* Dynamic Header */}
-        <div className={`${getHeaderStyle(selectedMeal.type)} p-6 relative overflow-hidden transition-colors`}>
-          <div className="absolute top-0 right-0 opacity-10 transform translate-x-4 -translate-y-4">
-            {getHeaderIcon(selectedMeal.type)}
-          </div>
-
-          <button
-            onClick={() => setSelectedMeal(null)}
-            className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer"
-          >
-            <X size={20} className="text-white" />
-          </button>
-
-          <button
-            onClick={handleDeleteMeal}
-            className="absolute top-4 right-16 bg-white/20 hover:bg-red-500/80 p-2 rounded-full backdrop-blur-md transition-colors z-20 cursor-pointer group"
-            title="Delete Meal"
-          >
-            <Trash2 size={20} className="text-white group-hover:scale-110 transition-transform" />
-          </button>
-
-          <div className="relative z-10">
-            <span className="bg-white/20 border border-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2 inline-block backdrop-blur-sm">
-              {selectedMeal.type}
-            </span>
-            <h3 className="text-2xl font-bold mb-1">{selectedMeal.name}</h3>
-            <div className="flex items-center gap-4 text-white/90 text-sm font-medium">
-              <span className="bg-black/10 px-2 py-0.5 rounded backdrop-blur-md">{selectedMeal.cost.toFixed(2)} ETB</span>
-              <span>{selectedMeal.calories} kcal</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 overflow-y-auto">
-          <div className="mb-8">
-            <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4"><ShoppingBag size={18} className="text-emerald-500" /> Ingredients</h4>
-            <div className="space-y-3">
-              {selectedMeal.ingredients.map((ing, i) => (
-                <div key={i} className="flex justify-between text-sm py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                  <span className="text-gray-600 dark:text-gray-300 font-medium">{ing.amount} {ing.name}</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{ing.cost.toFixed(2)} ETB</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h4 className="font-bold text-gray-900 dark:text-white mb-3">Instructions</h4>
-            <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-600 dark:text-gray-300 text-sm leading-relaxed border border-gray-100 dark:border-gray-700">
-              {selectedMeal.instructions}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- RENDER ---
-if (view === 'landing') return <LandingPage />;
-if (view === 'auth') return <AuthView />;
-if (view === 'profile') return <ProfileView />;
-if (view === 'pricing') return <PricingView onBack={() => setView('dashboard')} userEmail={user?.email} />;
-return (
-  <>
-    <DashboardView />
-    <DailyAnalysisModal />
-    <RecipeModal />
-  </>
-);
 }
