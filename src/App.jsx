@@ -415,7 +415,42 @@ export default function NutriGenius() {
           </div>
         </section>
 
-        {/* How It Works - Redesigned */}
+        {/* Trusted Data Sources Marquee */}
+        <section className="py-10 border-y border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/30 backdrop-blur-sm overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 mb-6 text-center">
+            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Trusted Data Sources</p>
+          </div>
+
+          <div className="relative flex overflow-x-hidden group">
+            {/* Gradient Masks for smooth fade edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white dark:from-gray-950 to-transparent z-10" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white dark:from-gray-950 to-transparent z-10" />
+
+            <div className="animate-scroll flex items-center gap-16 whitespace-nowrap py-2">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex items-center gap-16">
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] cursor-default">UNICEF</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-gray-800 dark:hover:text-white transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] cursor-default">Google</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-sky-500 dark:hover:text-sky-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(14,165,233,0.5)] cursor-default">Microsoft</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-orange-500 dark:hover:text-orange-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.5)] cursor-default">Amazon</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] cursor-default">UDHR</span>
+                </div>
+              ))}
+            </div>
+            {/* Duplicate for seamless loop */}
+            <div className="animate-scroll flex items-center gap-16 whitespace-nowrap py-2" aria-hidden="true">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex items-center gap-16">
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.5)] cursor-default">UNICEF</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-gray-800 dark:hover:text-white transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] cursor-default">Google</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-sky-500 dark:hover:text-sky-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(14,165,233,0.5)] cursor-default">Microsoft</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-orange-500 dark:hover:text-orange-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.5)] cursor-default">Amazon</span>
+                  <span className="text-2xl font-bold text-gray-300 dark:text-gray-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-300 hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] cursor-default">UDHR</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
         <section className="py-20 px-4 sm:px-6 relative overflow-hidden">
           {/* Background Elements */}
           <div className="absolute inset-0 bg-gray-50 dark:bg-gray-900/50 -z-20" />
