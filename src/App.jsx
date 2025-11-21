@@ -456,42 +456,48 @@ export default function NutriGenius() {
         // --- PAYMENT VERIFICATION START ---
         const pendingPayment = localStorage.getItem('pending_payment');
         if (pendingPayment) {
-          const { tx_ref, plan_id, plan_name } = JSON.parse(pendingPayment);
-          const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
+          // Verify with Chapa (Client-side verification for demo purposes)
+          // Note: In production, use a backend proxy to hide the secret key and avoid CORS.
 
-          try {
-            // Verify with Chapa using local proxy
-            const verifyResponse = await fetch(`/api/chapa/transaction/verify/${tx_ref}`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${CHAPA_KEY}`
+          // Add a small delay to allow Chapa to process the transaction
+          setTimeout(async () => {
+            const { tx_ref, plan_id, plan_name } = JSON.parse(pendingPayment);
+            const CHAPA_KEY = import.meta.env.VITE_CHAPA_SECRET_KEY;
+
+            try {
+              // Verify with Chapa using local proxy
+              const verifyResponse = await fetch(`/api/chapa/transaction/verify/${tx_ref}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${CHAPA_KEY}`
+                }
+              });
+
+              const verifyData = await verifyResponse.json();
+              console.log("Verification Response:", verifyData);
+
+              // Strict check: Ensure both API call AND transaction status are success
+              if (verifyData.status === 'success' && verifyData.data?.status === 'success') {
+                await setDoc(doc(db, 'users', currentUser.uid), {
+                  subscription: plan_id,
+                  subscriptionDate: serverTimestamp()
+                }, { merge: true });
+
+                alert(`Payment Successful! Upgraded to ${plan_name}.`);
+                localStorage.removeItem('pending_payment');
+              } else {
+                // Only alert if it's an actual failure (not just a refresh on a non-pending state)
+                alert(`Payment verification failed.\nStatus: ${verifyData.data?.status || 'Unknown'}\nMessage: ${verifyData.message || 'None'}`);
+                console.warn("Payment failed or pending:", verifyData);
+                localStorage.removeItem('pending_payment');
               }
-            });
 
-            const verifyData = await verifyResponse.json();
-
-            if (verifyData.status === 'success') {
-              await setDoc(doc(db, 'users', currentUser.uid), {
-                subscription: plan_id,
-                subscriptionDate: serverTimestamp()
-              }, { merge: true });
-
-              alert(`Payment Successful! Upgraded to ${plan_name}.`);
-            } else {
-              alert("Payment verification failed. Transaction was not successful.");
-              console.warn("Payment failed:", verifyData);
+            } catch (err) {
+              console.error("Verification Error:", err);
+              alert("Could not verify payment. Please check your connection.");
+              localStorage.removeItem('pending_payment');
             }
-
-            // Always clear pending payment to prevent infinite loops
-            localStorage.removeItem('pending_payment');
-
-          } catch (err) {
-            console.error("Verification Error:", err);
-            alert("Could not verify payment. Please check your connection.");
-            // Do NOT clear pending payment here so user can try again? 
-            // Actually, better to clear it to avoid annoying loops on refresh.
-            localStorage.removeItem('pending_payment');
-          }
+          }, 2000); // Wait 2 seconds
         }
         // --- PAYMENT VERIFICATION END ---
 
