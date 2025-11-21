@@ -839,8 +839,41 @@ export default function NutriGenius() {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6 transition-colors duration-300">
-        <div className="w-full max-w-3xl bg-white dark:bg-gray-900 rounded-[2rem] shadow-xl p-8 sm:p-12 relative">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden">
+
+        {/* Floating Food Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {['🥗', '🍎', '🥑', '🥕', '🍇', '🥦', '🥩', '🥚', '🧀', '🍗', '🌽', '🍅'].map((emoji, i) => (
+            <div
+              key={i}
+              className="absolute text-4xl opacity-20 animate-[float_6s_ease-in-out_infinite] select-none"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${5 + Math.random() * 5}s`,
+                fontSize: `${20 + Math.random() * 40}px`,
+                filter: 'blur(1px)'
+              }}
+            >
+              {emoji}
+            </div>
+          ))}
+          {/* Sparkles */}
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={`sparkle-${i}`}
+              className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-[twinkle_3s_ease-in-out_infinite]"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
           <button onClick={() => setView('dashboard')} className="absolute top-8 left-8 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft size={20} />
           </button>
