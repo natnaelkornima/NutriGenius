@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { mealDatabase } from './data/meals';
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from "firebase/analytics";
 import {
@@ -88,79 +89,89 @@ const db = getFirestore(app);
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 // --- GEMINI AI INTEGRATION ---
-const generateAffordablePlanAI = async (userProfile) => {
+
+// Helper: Filter meals by budget
+const filterMealsByBudget = (budget) => {
+  const dailyBudget = budget / 30; // Convert monthly to daily
+
+  if (dailyBudget < 500) {
+    return mealDatabase.filter(m => m.category === 'Small Price');
+  } else if (dailyBudget < 2000) {
+    return mealDatabase.filter(m => m.category === 'Medium Price');
+  } else {
+    return mealDatabase.filter(m => m.category === 'Large Price');
+  }
+};
+
+// AI-Powered Meal Selection from Database
+const selectOptimalMealsAI = async (userProfile, recentMealIds = []) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
+  // Filter meals by budget
+  const availableMeals = filterMealsByBudget(userProfile.weeklyBudget);
+
+  // Exclude recently used meals for variety
+  const filteredMeals = availableMeals.filter(m => !recentMealIds.includes(m.id));
+
+  if (filteredMeals.length === 0) {
+    console.warn('⚠️ No meals available after filtering, using all meals');
+    filteredMeals.push(...availableMeals);
+  }
+
+  // Randomly select 10 candidates for AI to analyze
+  const candidates = [];
+  const shuffled = [...filteredMeals].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(10, shuffled.length); i++) {
+    candidates.push(shuffled[i]);
+  }
+
   if (!apiKey) {
-    console.warn("Missing Gemini API Key");
-    // Fallback immediately if no key
+    console.warn('⚠️ No API key, selecting random meal');
+    const selected = candidates[0];
     return {
-      date: new Date().toISOString(),
-      total_estimated_cost: 150,
-      meals: [
-        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
-        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
-        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
-      ]
+      selectedMeal: selected,
+      analysis: 'AI analysis unavailable - API key missing'
     };
   }
 
-  // Added randomization to ensure variety on subsequent calls
-  const varietySeed = Math.floor(Math.random() * 10000);
-
-  const THEMES = [
-    "Traditional & Hearty (Focus on classic stews)",
-    "Light & Vegetable Focused (Focus on Atkilt and salads)",
-    "Spicy & Flavorful (Focus on Berbere rich dishes)",
-    "Modern Twist on Classics (Creative combinations)",
-    "Legume Lovers (Focus on Lentils, Chickpeas, Beans)",
-    "Budget Super-Saver (Focus on lowest cost high nutrition)",
-    "Protein Packed (Focus on eggs, legumes, or meats if budget allows)"
-  ];
-  const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
-
   const promptText = `
-    You are NutriGenius, an expert Ethiopian nutritionist. 
-    Generate a 1-day meal plan (Breakfast, Lunch, Dinner) for a user with this profile:
+    You are NutriGenius, an expert Ethiopian nutritionist and meal planner.
+    
+    USER PROFILE:
     - Goal: ${userProfile.goals}
-    - Weekly Budget: ${userProfile.weeklyBudget} ETB
+    - Monthly Budget: ${userProfile.weeklyBudget} ETB
     - Dietary Restrictions: ${userProfile.dietaryRestrictions?.join(', ') || 'None'}
     - Allergies: ${userProfile.allergies?.join(', ') || 'None'}
     - Activity Level: ${userProfile.activityLevel}
     
-    VARIATION SEED: ${varietySeed}
-    TODAY'S CULINARY THEME: ${randomTheme}
-
-    CRITICAL REQUIREMENTS:
-    1. **VARIETY IS KEY:** Do NOT just generate standard Shiro and Injera every time. Be creative based on the theme: "${randomTheme}".
-    2. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot, Bula, Genfo, Ful).
-    3. Use local Ethiopian ingredients available in markets (Mercato, local shops).
-    4. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
-       - Example: 1 Injera ~15-20 ETB, Shiro powder ~300 ETB/kg.
-       - Total daily cost should be realistic for the budget provided.
-    5. Return ONLY valid JSON without markdown formatting.
+    MEAL OPTIONS (select the BEST one):
+    ${candidates.map((m, i) => `
+    Option ${i + 1} (ID: ${m.id}):
+    - Breakfast: ${m.breakfast.name} (${m.breakfast.price} ETB)
+    - Lunch: ${m.lunch.name} (${m.lunch.price} ETB)
+    - Dinner: ${m.dinner.name} (${m.dinner.price} ETB)
+    - Total: ${m.total} ETB
+    `).join('\n')}
     
-    JSON Structure:
+    TASK:
+    1. Analyze each option based on the user's goals, dietary needs, and budget
+    2. Select the SINGLE BEST option (return only the ID number)
+    3. Provide a brief nutritional analysis (2-3 sentences)
+    4. Give a health score (1-10)
+    
+    Return ONLY valid JSON:
     {
-      "date": "${new Date().toISOString()}",
-      "total_estimated_cost": Number,
-      "meals": [
-        {
-          "type": "Breakfast",
-          "name": "String",
-          "cost": Number,
-          "calories": Number,
-          "ingredients": [{"name": "String", "amount": "String", "cost": Number}],
-          "instructions": "String"
-        },
-        { "type": "Lunch", ... },
-        { "type": "Dinner", ... }
-      ]
+      "selectedId": Number,
+      "analysis": "String (2-3 sentences about nutritional value)",
+      "score": Number (1-10),
+      "reasoning": "String (why this option is best for the user)"
     }
   `;
 
   try {
+    console.log('🤖 AI analyzing', candidates.length, 'meal options...');
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -168,33 +179,108 @@ const generateAffordablePlanAI = async (userProfile) => {
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          temperature: 0.9,
-          topP: 0.95,
-          topK: 40
+          temperature: 0.7
         }
       })
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorBody.slice(0, 100)}`);
+      throw new Error(`API Error ${response.status}`);
     }
 
     const data = await response.json();
     const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return JSON.parse(textResponse);
+    const aiResult = JSON.parse(textResponse);
+
+    const selectedMeal = candidates.find(m => m.id === aiResult.selectedId) || candidates[0];
+
+    console.log('✅ AI selected meal ID:', selectedMeal.id);
+    console.log('📊 Score:', aiResult.score, '| Reasoning:', aiResult.reasoning);
+
+    return {
+      selectedMeal,
+      analysis: aiResult.analysis,
+      score: aiResult.score,
+      reasoning: aiResult.reasoning
+    };
 
   } catch (error) {
-    console.error("AI Error:", error);
+    console.error('❌ AI selection error:', error);
+    // Fallback to random selection
     return {
-      date: new Date().toISOString(),
-      total_estimated_cost: 150,
-      meals: [
-        { type: 'Breakfast', name: 'Chechebsa (Fallback)', cost: 40, calories: 450, ingredients: [{ name: 'Flatbread', amount: '200g', cost: 20 }, { name: 'Spiced Butter', amount: '1 tbsp', cost: 20 }], instructions: 'Shred flatbread and mix with spiced butter and berbere.' },
-        { type: 'Lunch', name: 'Misir Wot (Fallback)', cost: 60, calories: 550, ingredients: [{ name: 'Lentils', amount: '200g', cost: 30 }, { name: 'Injera', amount: '2 rolls', cost: 30 }], instructions: 'Spicy lentil stew served with fresh injera.' },
-        { type: 'Dinner', name: 'Gomen with Ayib (Fallback)', cost: 50, calories: 350, ingredients: [{ name: 'Collard Greens', amount: '1 bunch', cost: 20 }, { name: 'Cottage Cheese', amount: '100g', cost: 30 }], instructions: 'Sautéed greens served with mild cottage cheese.' }
-      ]
+      selectedMeal: candidates[0],
+      analysis: 'Balanced Ethiopian meal plan with traditional dishes',
+      score: 7,
+      reasoning: 'Selected based on budget compatibility'
     };
+  }
+};
+
+// Convert database meal to app format
+const convertMealToAppFormat = (dbMeal, aiAnalysis) => {
+  return {
+    date: new Date().toISOString(),
+    total_estimated_cost: dbMeal.total,
+    mealId: dbMeal.id, // Track for variety
+    aiAnalysis: {
+      summary: aiAnalysis.analysis,
+      score: aiAnalysis.score,
+      reasoning: aiAnalysis.reasoning
+    },
+    meals: [
+      {
+        type: 'Breakfast',
+        name: dbMeal.breakfast.name,
+        cost: dbMeal.breakfast.price,
+        calories: 450, // Estimated
+        ingredients: [{ name: dbMeal.breakfast.name, amount: '1 serving', cost: dbMeal.breakfast.price }],
+        instructions: `Traditional Ethiopian breakfast: ${dbMeal.breakfast.name}`
+      },
+      {
+        type: 'Lunch',
+        name: dbMeal.lunch.name,
+        cost: dbMeal.lunch.price,
+        calories: 650, // Estimated
+        ingredients: [{ name: dbMeal.lunch.name, amount: '1 serving', cost: dbMeal.lunch.price }],
+        instructions: `Traditional Ethiopian lunch: ${dbMeal.lunch.name}`
+      },
+      {
+        type: 'Dinner',
+        name: dbMeal.dinner.name,
+        cost: dbMeal.dinner.price,
+        calories: 550, // Estimated
+        ingredients: [{ name: dbMeal.dinner.name, amount: '1 serving', cost: dbMeal.dinner.price }],
+        instructions: `Traditional Ethiopian dinner: ${dbMeal.dinner.name}`
+      }
+    ]
+  };
+};
+
+// Main generation function (updated to use database)
+const generateAffordablePlanAI = async (userProfile, recentMealIds = []) => {
+  try {
+    console.log('🚀 Generating meal plan from database...');
+    console.log('📊 Budget:', userProfile.weeklyBudget, 'ETB/month');
+    console.log('🎯 Goal:', userProfile.goals);
+
+    const result = await selectOptimalMealsAI(userProfile, recentMealIds);
+    const mealPlan = convertMealToAppFormat(result.selectedMeal, result);
+
+    console.log('✅ Generated plan:', mealPlan);
+    return mealPlan;
+
+  } catch (error) {
+    console.error('❌ Generation failed:', error);
+
+    // Fallback to simple selection
+    const availableMeals = filterMealsByBudget(userProfile.weeklyBudget);
+    const randomMeal = availableMeals[Math.floor(Math.random() * availableMeals.length)];
+
+    return convertMealToAppFormat(randomMeal, {
+      analysis: 'Balanced Ethiopian meal selection',
+      score: 7,
+      reasoning: 'Fallback selection'
+    });
   }
 };
 
@@ -605,12 +691,41 @@ export default function NutriGenius() {
   };
 
   const handleGenerate = async () => {
-    if (!profileData) return;
+    if (!profileData) {
+      alert('Please complete your profile first!');
+      return;
+    }
+
     setGenerating(true);
+    console.log('🚀 Starting meal plan generation...');
+
     try {
-      const plan = await generateAffordablePlanAI(profileData);
+      // Get recent meal IDs for variety tracking (last 5)
+      const recentMealIds = mealPlans
+        .filter(p => p.mealId) // Only plans with mealId (from database)
+        .slice(0, 5)
+        .map(p => p.mealId);
+
+      console.log('🔄 Avoiding recent meals:', recentMealIds);
+
+      const plan = await generateAffordablePlanAI(profileData, recentMealIds);
+
+      if (plan.error) {
+        console.warn('⚠️ Plan generated with error:', plan.error);
+        alert(`Meal plan generated with fallback data. Error: ${plan.error}\n\nPlease check your API key in .env file.`);
+      } else {
+        console.log('✅ Plan generated successfully:', plan);
+      }
+
       await addDoc(collection(db, 'users', user.uid, 'meal_plans'), { ...plan, createdAt: serverTimestamp() });
-    } catch (err) { console.error(err); } finally { setGenerating(false); }
+      console.log('💾 Plan saved to database');
+
+    } catch (err) {
+      console.error('❌ Generation failed:', err);
+      alert(`Failed to generate meal plan: ${err.message}\n\nCheck console for details.`);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleDeletePlan = async (planId) => {
