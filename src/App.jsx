@@ -109,6 +109,17 @@ const generateAffordablePlanAI = async (userProfile) => {
   // Added randomization to ensure variety on subsequent calls
   const varietySeed = Math.floor(Math.random() * 10000);
 
+  const THEMES = [
+    "Traditional & Hearty (Focus on classic stews)",
+    "Light & Vegetable Focused (Focus on Atkilt and salads)",
+    "Spicy & Flavorful (Focus on Berbere rich dishes)",
+    "Modern Twist on Classics (Creative combinations)",
+    "Legume Lovers (Focus on Lentils, Chickpeas, Beans)",
+    "Budget Super-Saver (Focus on lowest cost high nutrition)",
+    "Protein Packed (Focus on eggs, legumes, or meats if budget allows)"
+  ];
+  const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+
   const promptText = `
     You are NutriGenius, an expert Ethiopian nutritionist. 
     Generate a 1-day meal plan (Breakfast, Lunch, Dinner) for a user with this profile:
@@ -118,15 +129,17 @@ const generateAffordablePlanAI = async (userProfile) => {
     - Allergies: ${userProfile.allergies?.join(', ') || 'None'}
     - Activity Level: ${userProfile.activityLevel}
     
-    VARIATION SEED: ${varietySeed} (Ensure this plan is different from previous generic outputs).
+    VARIATION SEED: ${varietySeed}
+    TODAY'S CULINARY THEME: ${randomTheme}
 
     CRITICAL REQUIREMENTS:
-    1. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot).
-    2. Use local Ethiopian ingredients available in markets (Mercato, local shops).
-    3. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
+    1. **VARIETY IS KEY:** Do NOT just generate standard Shiro and Injera every time. Be creative based on the theme: "${randomTheme}".
+    2. Use authentic and familiar Ethiopian foods (e.g., Injera, Shiro, Tibs, Firfir, Kinche, Atkilt, Gomen, Misir Wot, Bula, Genfo, Ful).
+    3. Use local Ethiopian ingredients available in markets (Mercato, local shops).
+    4. **PRICING MUST BE REALISTIC:** Estimate costs based on current local market prices in Ethiopia (Addis Ababa).
        - Example: 1 Injera ~15-20 ETB, Shiro powder ~300 ETB/kg.
        - Total daily cost should be realistic for the budget provided.
-    4. Return ONLY valid JSON without markdown formatting.
+    5. Return ONLY valid JSON without markdown formatting.
     
     JSON Structure:
     {
@@ -153,7 +166,12 @@ const generateAffordablePlanAI = async (userProfile) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { responseMimeType: "application/json" }
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.9,
+          topP: 0.95,
+          topK: 40
+        }
       })
     });
 
