@@ -155,22 +155,19 @@ const selectOptimalMealsAI = async (userProfile, recentMealIds = []) => {
     `).join('\n')}
     
     TASK:
-    1. Analyze each option based on the user's goals, dietary needs, and budget
-    2. Select the SINGLE BEST option (return only the ID number)
-    3. Provide a brief nutritional analysis (2-3 sentences)
-    4. Give a health score (1-10)
+    Select the SINGLE BEST option that:
+    1. Fits the user's goals and dietary needs
+    2. MINIMIZES TOTAL COST while maintaining nutrition
+    3. Provides good value for money
     
     Return ONLY valid JSON:
     {
-      "selectedId": Number,
-      "analysis": "String (2-3 sentences about nutritional value)",
-      "score": Number (1-10),
-      "reasoning": "String (why this option is best for the user)"
+      "selectedId": Number
     }
   `;
 
   try {
-    console.log('🤖 AI analyzing', candidates.length, 'meal options...');
+    console.log('🤖 AI selecting from', candidates.length, 'meal options...');
 
     const response = await fetch(url, {
       method: 'POST',
@@ -195,38 +192,22 @@ const selectOptimalMealsAI = async (userProfile, recentMealIds = []) => {
     const selectedMeal = candidates.find(m => m.id === aiResult.selectedId) || candidates[0];
 
     console.log('✅ AI selected meal ID:', selectedMeal.id);
-    console.log('📊 Score:', aiResult.score, '| Reasoning:', aiResult.reasoning);
 
-    return {
-      selectedMeal,
-      analysis: aiResult.analysis,
-      score: aiResult.score,
-      reasoning: aiResult.reasoning
-    };
+    return { selectedMeal };
 
   } catch (error) {
     console.error('❌ AI selection error:', error);
     // Fallback to random selection
-    return {
-      selectedMeal: candidates[0],
-      analysis: 'Balanced Ethiopian meal plan with traditional dishes',
-      score: 7,
-      reasoning: 'Selected based on budget compatibility'
-    };
+    return { selectedMeal: candidates[0] };
   }
 };
 
 // Convert database meal to app format
-const convertMealToAppFormat = (dbMeal, aiAnalysis) => {
+const convertMealToAppFormat = (dbMeal) => {
   return {
     date: new Date().toISOString(),
     total_estimated_cost: dbMeal.total,
     mealId: dbMeal.id, // Track for variety
-    aiAnalysis: {
-      summary: aiAnalysis.analysis,
-      score: aiAnalysis.score,
-      reasoning: aiAnalysis.reasoning
-    },
     meals: [
       {
         type: 'Breakfast',
@@ -256,6 +237,97 @@ const convertMealToAppFormat = (dbMeal, aiAnalysis) => {
   };
 };
 
+// NEW: On-Demand AI Nutritional Analysis
+const analyzeMealPlanAI = async (mealPlan) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+
+  if (!apiKey) {
+    return {
+      score: 0,
+      summary: 'API Key missing. Please configure VITE_GEMINI_API_KEY in your .env file.'
+    };
+  }
+
+  const promptText = `
+    You are NutriGenius, an expert Ethiopian nutritionist.
+    
+    Analyze this daily meal plan:
+    
+    BREAKFAST: ${mealPlan.meals[0].name} (${mealPlan.meals[0].cost} ETB, ~${mealPlan.meals[0].calories} cal)
+    LUNCH: ${mealPlan.meals[1].name} (${mealPlan.meals[1].cost} ETB, ~${mealPlan.meals[1].calories} cal)
+    DINNER: ${mealPlan.meals[2].name} (${mealPlan.meals[2].cost} ETB, ~${mealPlan.meals[2].calories} cal)
+    
+    TOTAL COST: ${mealPlan.total_estimated_cost} ETB
+    TOTAL CALORIES: ~${mealPlan.meals.reduce((sum, m) => sum + m.calories, 0)} cal
+    
+    TASK:
+    1. Provide a nutritional analysis (2-3 sentences)
+    2. Rate the overall health value (1-10)
+    3. Mention key nutrients and benefits
+    
+    Return ONLY valid JSON:
+    {
+      "score": Number (1-10),
+      "summary": "String (2-3 sentences about nutritional value, benefits, and balance)"
+    }
+  `;
+
+  try {
+    console.log('🔬 Analyzing meal plan nutritionally...');
+    console.log('📋 Meal details:', {
+      breakfast: mealPlan.meals[0].name,
+      lunch: mealPlan.meals[1].name,
+      dinner: mealPlan.meals[2].name,
+      total: mealPlan.total_estimated_cost
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API Error:', response.status, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText.substring(0, 100)}`);
+    }
+
+    const data = await response.json();
+    console.log('📦 API Response:', data);
+
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!textResponse) {
+      console.error('❌ No text in response');
+      throw new Error('No response text from API');
+    }
+
+    console.log('📝 Raw response:', textResponse);
+
+    const analysis = JSON.parse(textResponse);
+    console.log('✅ Analysis complete. Score:', analysis.score);
+
+    return analysis;
+
+  } catch (error) {
+    console.error('❌ Analysis error:', error);
+    console.error('Error stack:', error.stack);
+
+    return {
+      score: 7,
+      summary: `Balanced Ethiopian meal plan. ${error.message || 'Analysis temporarily unavailable.'}`
+    };
+  }
+};
+
 // Main generation function (updated to use database)
 const generateAffordablePlanAI = async (userProfile, recentMealIds = []) => {
   try {
@@ -264,7 +336,7 @@ const generateAffordablePlanAI = async (userProfile, recentMealIds = []) => {
     console.log('🎯 Goal:', userProfile.goals);
 
     const result = await selectOptimalMealsAI(userProfile, recentMealIds);
-    const mealPlan = convertMealToAppFormat(result.selectedMeal, result);
+    const mealPlan = convertMealToAppFormat(result.selectedMeal);
 
     console.log('✅ Generated plan:', mealPlan);
     return mealPlan;
@@ -276,11 +348,7 @@ const generateAffordablePlanAI = async (userProfile, recentMealIds = []) => {
     const availableMeals = filterMealsByBudget(userProfile.weeklyBudget);
     const randomMeal = availableMeals[Math.floor(Math.random() * availableMeals.length)];
 
-    return convertMealToAppFormat(randomMeal, {
-      analysis: 'Balanced Ethiopian meal selection',
-      score: 7,
-      reasoning: 'Fallback selection'
-    });
+    return convertMealToAppFormat(randomMeal);
   }
 };
 
@@ -1159,7 +1227,7 @@ export default function NutriGenius() {
         <div className="max-w-5xl mx-auto p-6 space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Calendar Widget */}
-            <div className="lg:col-span-5 bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
+            <div className="lg:col-span-5 bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
@@ -1216,7 +1284,7 @@ export default function NutriGenius() {
             </div>
 
             {/* Budget Hero */}
-            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
+            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
               <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
 
               <div className="relative z-10">
@@ -1372,7 +1440,7 @@ export default function NutriGenius() {
           ))}
         </div>
 
-        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem] shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
+        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
           <button onClick={() => setView('dashboard')} className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft size={20} />
           </button>
@@ -1497,7 +1565,7 @@ export default function NutriGenius() {
     const handleAnalyze = async () => {
       setAnalyzing(true);
       try {
-        const result = await analyzeDailyPlanAI(selectedPlan);
+        const result = await analyzeMealPlanAI(selectedPlan);
         if (result.score === 0 && result.summary.includes("API Key missing")) {
           alert(result.summary);
         } else {
@@ -1516,7 +1584,7 @@ export default function NutriGenius() {
 
     return (
       <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
           {/* Header */}
           <div className="bg-gray-100 dark:bg-gray-800 p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
@@ -1662,7 +1730,7 @@ export default function NutriGenius() {
 
     return (
       <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
           {/* Dynamic Header */}
           <div className={`${getHeaderStyle(selectedMeal.type)} p-6 relative overflow-hidden transition-colors`}>
