@@ -35,6 +35,7 @@ import {
   Loader2,
   Calendar,
   ChevronRight,
+  ChevronLeft,
   PieChart,
   ShoppingBag,
   X,
@@ -1023,17 +1024,89 @@ export default function NutriGenius() {
         </div>
 
         <div className="max-w-5xl mx-auto p-6 space-y-8">
-          {/* Budget Hero */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <p className="text-gray-400 font-medium mb-1 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
-                <div className="text-5xl font-bold tracking-tight mb-2">ETB {spent} <span className="text-2xl text-gray-500 font-normal">/ ETB {budget}</span></div>
-                <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block">{100 - Math.round(percent)}% Remaining</div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Calendar Widget */}
+            <div className="lg:col-span-5 bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </h3>
+                <div className="flex gap-1">
+                  <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-400"><ChevronLeft size={16} /></button>
+                  <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-400"><ChevronRight size={16} /></button>
+                </div>
               </div>
-              <div className="w-full md:w-64">
-                <div className="h-3 bg-gray-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${percent > 90 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${percent}%` }} /></div>
+
+              <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                  <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{d}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 flex-1 content-start">
+                {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
+                {days.map(day => {
+                  const cost = getDailyCost(day);
+                  const isToday = day === now.getDate();
+                  const hasPlan = cost > 0;
+
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        const plan = monthlyPlans.find(p => new Date(p.date).getDate() === day);
+                        if (plan) setSelectedPlan(plan);
+                      }}
+                      disabled={!hasPlan}
+                      className={`
+                        aspect-square rounded-xl flex flex-col items-center justify-center text-xs relative transition-all duration-200
+                        ${hasPlan
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-800 hover:scale-105 hover:shadow-md cursor-pointer'
+                          : 'text-gray-400 dark:text-gray-600 cursor-default'
+                        }
+                        ${isToday ? 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-900 z-10' : ''}
+                      `}
+                    >
+                      <span>{day}</span>
+                      {hasPlan && (
+                        <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-800 flex justify-between items-center text-xs text-gray-400">
+                <span>{monthlyPlans.length} days planned</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Active Plan</span>
+              </div>
+            </div>
+
+            {/* Budget Hero */}
+            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
+
+              <div className="relative z-10">
+                <p className="text-gray-400 font-medium mb-2 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-5xl font-bold tracking-tight">ETB {spent}</span>
+                  <span className="text-xl text-gray-500 font-normal">/ {budget}</span>
+                </div>
+                <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block mb-8">{100 - Math.round(percent)}% Remaining</div>
+              </div>
+
+              <div className="relative z-10 w-full">
+                <div className="flex justify-between text-xs text-gray-400 mb-2">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+                <div className="h-4 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+                  <div
+                    className={`h-full transition-all duration-1000 ease-out ${percent > 90 ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1096,35 +1169,7 @@ export default function NutriGenius() {
             </div>
           )}
 
-          {/* Calendar Tracker (Moved) */}
-          <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </h3>
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
-                {monthlyPlans.length} Days Planned
-              </span>
-            </div>
-            <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                <div key={d} className="text-xs font-bold text-gray-400">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {Array(firstDayOfMonth).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
-              {days.map(day => {
-                const cost = getDailyCost(day);
-                const isToday = day === now.getDate();
-                return (
-                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs relative transition-all ${cost > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-800' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isToday ? 'ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-gray-900' : ''}`}>
-                    <span>{day}</span>
-                    {cost > 0 && <span className="text-[10px] mt-0.5">{Math.round(cost)}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+
         </div>
       </div>
     );
