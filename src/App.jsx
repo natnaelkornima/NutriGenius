@@ -61,6 +61,7 @@ import {
   Sparkles,
   Save,
   Edit2,
+  Check,
   Twitter,
   Instagram,
   Linkedin,
@@ -1527,6 +1528,7 @@ export default function NutriGenius() {
     if (!selectedPlan) return null;
 
     const [notes, setNotes] = useState(selectedPlan.notes || '');
+    const [mood, setMood] = useState(selectedPlan.mood || null);
     const [isEditingNote, setIsEditingNote] = useState(!selectedPlan.notes);
     const [analysis, setAnalysis] = useState(selectedPlan.aiAnalysis || null);
     const [analyzing, setAnalyzing] = useState(false);
@@ -1535,12 +1537,14 @@ export default function NutriGenius() {
     const handleSaveNotes = async () => {
       setSavingNote(true);
       try {
-        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes });
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes, mood });
         // Update local state to reflect change without refetch needed immediately
-        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes } : p);
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes, mood } : p);
         setMealPlans(updatedPlans);
+        // FIX: Update selectedPlan immediately to show saved state
+        setSelectedPlan({ ...selectedPlan, notes, mood });
         setIsEditingNote(false);
-        alert("Notes saved successfully!");
+        // alert("Notes saved successfully!"); // Removed alert for "instant" feel
       } catch (e) {
         console.error(e);
         alert("Failed to save notes. Please try again.");
@@ -1551,10 +1555,13 @@ export default function NutriGenius() {
     const handleDeleteNote = async () => {
       if (!window.confirm("Are you sure you want to delete this note?")) return;
       try {
-        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes: "" });
-        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes: "" } : p);
+        await updateDoc(doc(db, 'users', user.uid, 'meal_plans', selectedPlan.id), { notes: "", mood: null });
+        const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, notes: "", mood: null } : p);
         setMealPlans(updatedPlans);
+        // FIX: Update selectedPlan immediately
+        setSelectedPlan({ ...selectedPlan, notes: "", mood: null });
         setNotes("");
+        setMood(null);
         setIsEditingNote(true);
       } catch (e) {
         console.error(e);
@@ -1654,40 +1661,73 @@ export default function NutriGenius() {
             {/* User Notes Section */}
             <div>
               <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-                <FileText size={18} className="text-gray-400" /> Daily Notes
+                <FileText size={18} className="text-gray-400" /> Daily Notes & Mood
               </h4>
 
               {!isEditingNote && notes ? (
-                <div className="relative group rotate-1 hover:rotate-0 transition-transform duration-300">
-                  <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-lg shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
-                    <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
+                <div className="group relative">
+                  <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl border border-gray-100 dark:border-gray-700/50 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all">
+                    {mood && <div className="text-2xl mb-3">{mood}</div>}
+                    <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">{notes}</p>
                   </div>
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-emerald-600 shadow-sm backdrop-blur-sm">
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setIsEditingNote(true)} className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:text-emerald-600 shadow-sm border border-gray-100 dark:border-gray-700">
                       <Edit2 size={14} />
                     </button>
-                    <button onClick={handleDeleteNote} className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full hover:text-red-600 shadow-sm backdrop-blur-sm">
+                    <button onClick={handleDeleteNote} className="p-2 bg-white dark:bg-gray-800 rounded-lg hover:text-red-600 shadow-sm border border-gray-100 dark:border-gray-700">
                       <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="animate-in fade-in slide-in-from-bottom-2">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="How did you feel today? Any substitutions made?"
-                    className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
-                  />
-                  <div className="mt-3 flex justify-end gap-2">
+                <div className="animate-in fade-in slide-in-from-bottom-2 bg-gray-50 dark:bg-gray-800/30 p-6 rounded-xl border border-gray-100 dark:border-gray-700/50 relative">
+
+                  {/* Mood Selector */}
+                  <div className="mb-6">
+                    <label className="text-xs font-bold text-gray-400 uppercase mb-3 block">How did you feel?</label>
+                    <div className="flex gap-4">
+                      {['😫', '😐', '🙂', '😀', '🤩'].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setMood(m)}
+                          className={`text-2xl p-3 rounded-xl transition-all ${mood === m ? 'bg-white dark:bg-gray-700 shadow-md scale-110' : 'hover:bg-white/50 dark:hover:bg-gray-700/50 grayscale hover:grayscale-0'}`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-4 relative">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-xs font-bold text-gray-400 uppercase">Your Daily Notes</label>
+                      <span className="text-xs text-gray-400">{notes.length}/500</span>
+                    </div>
+                    <div className="relative group">
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        maxLength={500}
+                        placeholder="✨ Share your day... Did you enjoy the meals? Any substitutions? How's your energy level?"
+                        className="w-full h-40 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-5 text-sm focus:border-emerald-400 dark:focus:border-emerald-500 focus:shadow-lg focus:shadow-emerald-500/10 outline-none resize-none transition-all duration-300 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      ></textarea>
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-focus-within:opacity-20 dark:group-focus-within:opacity-10 blur-xl transition-opacity duration-300 -z-10"></div>
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-6 right-6 flex gap-2">
                     {notes && !isEditingNote && (
-                      <Button onClick={() => setIsEditingNote(false)} variant="ghost" className="px-4 py-2 text-xs h-auto">
-                        Cancel
-                      </Button>
+                      <button onClick={() => setIsEditingNote(false)} className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all">
+                        <X size={20} />
+                      </button>
                     )}
-                    <Button onClick={handleSaveNotes} disabled={savingNote} variant="secondary" className="px-4 py-2 text-xs h-auto flex items-center gap-2 shadow-lg shadow-emerald-100 dark:shadow-none">
-                      <Save size={14} /> {savingNote ? "Saving..." : "Save Note"}
-                    </Button>
+                    <button
+                      onClick={handleSaveNotes}
+                      disabled={savingNote}
+                      className="p-3 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingNote ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> : <Check size={20} />}
+                    </button>
                   </div>
                 </div>
               )}
