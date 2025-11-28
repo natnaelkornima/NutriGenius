@@ -1612,19 +1612,32 @@ export default function NutriGenius() {
             </div>
 
             {/* AI Analysis Section */}
-            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+            {/* AI Analysis Section */}
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-lg border border-emerald-100 dark:border-emerald-800/30 transition-all duration-500">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
                   <Sparkles size={18} className="text-emerald-500" /> AI Nutritional Analysis
                 </h4>
-                {!analysis && (
-                  <Button onClick={handleAnalyze} disabled={analyzing} variant="primary" className="px-4 py-2 text-xs h-auto">
-                    {analyzing ? "Analyzing..." : "Analyze Day"}
+                {!analysis && !analyzing && (
+                  <Button onClick={handleAnalyze} disabled={analyzing} variant="primary" className="px-4 py-2 text-xs h-auto shadow-lg shadow-emerald-200/50 dark:shadow-none">
+                    Analyze Day
                   </Button>
                 )}
               </div>
-              {analysis ? (
-                <div className="animate-in fade-in">
+
+              {analyzing ? (
+                <div className="animate-pulse flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-16 bg-emerald-200/50 dark:bg-emerald-800/50 rounded-lg"></div>
+                    <div className="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-emerald-100 dark:bg-emerald-900/30 rounded w-full"></div>
+                      <div className="h-3 bg-emerald-100 dark:bg-emerald-900/30 rounded w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
+              ) : analysis ? (
+                <div className="animate-in fade-in duration-700 slide-in-from-bottom-2">
                   <div className="flex items-center gap-4 mb-3">
                     <div className="text-3xl font-bold text-emerald-600">{analysis.score}<span className="text-sm text-gray-400 font-normal">/10</span></div>
                     <div className="h-10 w-px bg-emerald-200 dark:bg-emerald-800"></div>
