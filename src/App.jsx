@@ -612,6 +612,7 @@ export default function NutriGenius() {
   // View States
   const [selectedMeal, setSelectedMeal] = useState(null); // For recipe modal
   const [selectedPlan, setSelectedPlan] = useState(null); // For daily analysis view
+  const [selectedDate, setSelectedDate] = useState(null); // For daily overview (all plans for a date)
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1256,8 +1257,7 @@ export default function NutriGenius() {
                     <button
                       key={day}
                       onClick={() => {
-                        const plan = monthlyPlans.find(p => new Date(p.date).getDate() === day);
-                        if (plan) setSelectedPlan(plan);
+                        if (hasPlan) setSelectedDate(new Date(currentYear, currentMonth, day).toISOString());
                       }}
                       disabled={!hasPlan}
                       className={`
@@ -1518,6 +1518,134 @@ export default function NutriGenius() {
 
             <Button type="submit" disabled={loading} className="w-full py-4 text-lg">Save Profile</Button>
           </form>
+        </div>
+      </div>
+    );
+  };
+
+  // NEW: Daily Overview Modal - Shows all plans for a selected date
+  const DailyOverviewModal = () => {
+    if (!selectedDate) return null;
+
+    // Get all plans for the selected date
+    const dayPlans = mealPlans.filter(p => {
+      const planDate = new Date(p.date);
+      const selDate = new Date(selectedDate);
+      return planDate.toDateString() === selDate.toDateString();
+    });
+
+    if (dayPlans.length === 0) return null;
+
+    // Calculate aggregate stats
+    const totalCalories = dayPlans.reduce((sum, plan) =>
+      sum + plan.meals.reduce((mSum, m) => mSum + m.calories, 0), 0
+    );
+    const totalCost = dayPlans.reduce((sum, plan) => sum + plan.total_estimated_cost, 0);
+    const avgScore = dayPlans.filter(p => p.aiAnalysis).length > 0
+      ? dayPlans.filter(p => p.aiAnalysis).reduce((sum, p) => sum + p.aiAnalysis.score, 0) / dayPlans.filter(p => p.aiAnalysis).length
+      : null;
+
+    return (
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-white">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
+                <p className="text-emerald-100 text-sm mt-1">{dayPlans.length} meal {dayPlans.length === 1 ? 'combination' : 'combinations'} generated</p>
+              </div>
+              <button onClick={() => setSelectedDate(null)} className="p-2 rounded-full hover:bg-white/20 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          {/* Overall Stats */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-xs font-bold text-gray-400 uppercase mb-1">Total Calories</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalCalories.toLocaleString()}</div>
+                <div className="text-xs text-gray-500">kcal</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs font-bold text-gray-400 uppercase mb-1">Total Cost</div>
+                <div className="text-2xl font-bold text-emerald-600">{totalCost.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">ETB</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs font-bold text-gray-400 uppercase mb-1">Avg Score</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{avgScore ? avgScore.toFixed(1) : '—'}</div>
+                <div className="text-xs text-gray-500">/10</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Meal Plans Grid */}
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="grid md:grid-cols-2 gap-4">
+              {dayPlans.map((plan, idx) => (
+                <div
+                  key={plan.id}
+                  onClick={() => {
+                    setSelectedDate(null);
+                    setSelectedPlan(plan);
+                  }}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-5 border-2 border-gray-100 dark:border-gray-700 hover:border-emerald-500 cursor-pointer transition-all hover:shadow-lg group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900 dark:text-white text-sm">Combination {idx + 1}</div>
+                        <div className="text-xs text-gray-500">{new Date(plan.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                      </div>
+                    </div>
+                    {plan.aiAnalysis && (
+                      <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
+                        <Sparkles size={12} className="text-emerald-500" />
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{plan.aiAnalysis.score}/10</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mini Meal List */}
+                  <div className="space-y-2 mb-3">
+                    {plan.meals.map((meal, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">{meal.name}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stats Row */}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>{plan.meals.reduce((sum, m) => sum + m.calories, 0)} kcal</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">{plan.total_estimated_cost.toFixed(2)} ETB</span>
+                    </div>
+                    {plan.notes && (
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <FileText size={12} />
+                        <span>Notes</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hover Arrow */}
+                  <div className="mt-3 flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>View Details</span>
+                    <ChevronRight size={14} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1852,6 +1980,7 @@ export default function NutriGenius() {
   return (
     <>
       <DashboardView />
+      <DailyOverviewModal />
       <DailyAnalysisModal />
       <RecipeModal />
     </>
