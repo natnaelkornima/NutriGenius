@@ -106,7 +106,7 @@ const filterMealsByBudget = (budget) => {
 // AI-Powered Meal Selection from Database
 const selectOptimalMealsAI = async (userProfile, recentMealIds = []) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   // Filter meals by budget
   const availableMeals = filterMealsByBudget(userProfile.weeklyBudget);
@@ -240,7 +240,7 @@ const convertMealToAppFormat = (dbMeal) => {
 // NEW: On-Demand AI Nutritional Analysis
 const analyzeMealPlanAI = async (mealPlan) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   if (!apiKey) {
     return {
@@ -356,7 +356,7 @@ const analyzeDailyPlanAI = async (plan) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) return { summary: "API Key missing. Please add VITE_GEMINI_API_KEY to .env file.", score: 0 };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
   const promptText = `
     Analyze this daily meal plan combination:
