@@ -1574,6 +1574,8 @@ export default function NutriGenius() {
           // Update local state
           const updatedPlans = mealPlans.map(p => p.id === selectedPlan.id ? { ...p, aiAnalysis: result } : p);
           setMealPlans(updatedPlans);
+          // FIX: Update selectedPlan to prevent stale state on modal re-render
+          setSelectedPlan({ ...selectedPlan, aiAnalysis: result });
         }
       } catch (e) {
         console.error(e);
