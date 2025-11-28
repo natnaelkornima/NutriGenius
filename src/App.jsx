@@ -106,7 +106,7 @@ const filterMealsByBudget = (budget) => {
 // AI-Powered Meal Selection from Database
 const selectOptimalMealsAI = async (userProfile, recentMealIds = []) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
   // Filter meals by budget
   const availableMeals = filterMealsByBudget(userProfile.weeklyBudget);
@@ -240,7 +240,7 @@ const convertMealToAppFormat = (dbMeal) => {
 // NEW: On-Demand AI Nutritional Analysis
 const analyzeMealPlanAI = async (mealPlan) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
   if (!apiKey) {
     return {
@@ -356,7 +356,7 @@ const analyzeDailyPlanAI = async (plan) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) return { summary: "API Key missing. Please add VITE_GEMINI_API_KEY to .env file.", score: 0 };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
   const promptText = `
     Analyze this daily meal plan combination:
@@ -415,13 +415,13 @@ const Button = ({ children, onClick, variant = 'primary', disabled, isLoading, c
 const Input = ({ label, ...props }) => (
   <div className="flex flex-col gap-2">
     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">{label}</label>
-    <input className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all hover:bg-white dark:hover:bg-gray-700" {...props} />
+    <input className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all hover:bg-white dark:hover:bg-gray-700" {...props} />
   </div>
 );
 
 // FIX: Updated SelectionCard for better alignment (items-start, text-left)
 const SelectionCard = ({ selected, onClick, icon: Icon, title, desc }) => (
-  <div onClick={onClick} className={`cursor-pointer p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 h-full ${selected ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-400' : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 hover:border-emerald-200 dark:hover:border-emerald-700'}`}>
+  <div onClick={onClick} className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 h-full ${selected ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-400' : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 hover:border-emerald-200 dark:hover:border-emerald-700'}`}>
     <div className={`p-3 rounded-full shrink-0 ${selected ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-800 dark:text-emerald-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
       <Icon size={20} />
     </div>
@@ -554,7 +554,7 @@ const PricingView = ({ onBack, userEmail }) => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {plans.map((plan) => (
-            <div key={plan.id} className={`relative bg-white dark:bg-gray-900 rounded-3xl p-8 border-2 flex flex-col ${plan.recommended ? 'border-emerald-500 shadow-2xl shadow-emerald-500/10 scale-105 z-10' : 'border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all'}`}>
+            <div key={plan.id} className={`relative bg-white dark:bg-gray-900 rounded-xl p-8 border-2 flex flex-col ${plan.recommended ? 'border-emerald-500 shadow-xl shadow-emerald-500/10 scale-105 z-10' : 'border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 transition-all'}`}>
               {plan.recommended && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                   Most Popular
@@ -958,9 +958,9 @@ export default function NutriGenius() {
               ].map((step, idx) => (
                 <div
                   key={idx}
-                  className={`group bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-gray-800 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${step.borderColor} ${step.shadowColor}`}
+                  className={`group bg-white dark:bg-gray-800 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-gray-800 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${step.borderColor} ${step.shadowColor}`}
                 >
-                  <div className={`w-14 h-14 rounded-2xl ${step.iconBg} flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                  <div className={`w-14 h-14 rounded-lg ${step.iconBg} flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                     <step.icon size={28} />
                   </div>
 
@@ -988,7 +988,7 @@ export default function NutriGenius() {
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-12 text-center">Loved by Budget Chefs</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {REVIEWS.map((review) => (
-                <div key={review.id} className="bg-gray-50 dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 flex flex-col">
+                <div key={review.id} className="bg-gray-50 dark:bg-gray-900 p-8 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col">
                   <div className="flex gap-1 text-yellow-400 mb-6"><Star fill="currentColor" size={18} /><Star fill="currentColor" size={18} /><Star fill="currentColor" size={18} /><Star fill="currentColor" size={18} /><Star fill="currentColor" size={18} /></div>
                   <p className="text-gray-600 dark:text-gray-300 mb-8 flex-grow">"{review.text}"</p>
                   <div className="flex items-center gap-4 mt-auto pt-6 border-t border-gray-200 dark:border-gray-800">
@@ -1029,10 +1029,10 @@ export default function NutriGenius() {
                         name="user_email"
                         placeholder="Enter your email"
                         required
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                       />
                     </div>
-                    <button type="submit" disabled={subscribing} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-70 flex items-center gap-2">
+                    <button type="submit" disabled={subscribing} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-70 flex items-center gap-2">
                       {subscribing ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
                       {subscribing ? '...' : 'Subscribe'}
                     </button>
@@ -1099,7 +1099,7 @@ export default function NutriGenius() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-200 dark:bg-emerald-900/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-200 dark:bg-teal-900/30 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
 
-      <div className="w-full max-w-md bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white dark:border-gray-700 z-10">
+      <div className="w-full max-w-md bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-xl shadow-xl border border-white dark:border-gray-700 z-10">
         <button onClick={() => setView('landing')} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X size={24} /></button>
         <div className="flex flex-col items-center mb-8">
           <div className="mb-4">
@@ -1107,7 +1107,7 @@ export default function NutriGenius() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
         </div>
-        {error && <div className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5" />{error}</div>}
+        {error && <div className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5" />{error}</div>}
         <form onSubmit={handleAuth} className="space-y-5">
           <Input name="email" type="email" label="Email Address" placeholder="hello@example.com" required />
           <Input name="password" type="password" label="Password" placeholder="••••••••" required />
@@ -1193,7 +1193,7 @@ export default function NutriGenius() {
 
               <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-full transition-all ${showSettings ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400'}`}><Settings size={24} /></button>
               {showSettings && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
                   <div className="bg-emerald-600 p-4 text-white">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg overflow-hidden">
@@ -1210,13 +1210,13 @@ export default function NutriGenius() {
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"><span className="flex items-center gap-2"><DollarSign size={16} className="text-emerald-500" /> Budget</span><span className="font-semibold text-gray-900 dark:text-white">{profileData?.weeklyBudget || 0} ETB/mo</span></div>
                   </div>
                   <div className="p-2">
-                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full text-left flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full text-left flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors">
                       <span className="flex items-center gap-3"><Moon size={18} className="text-gray-400" /> Dark Mode</span>
                       {isDarkMode ? <div className="w-8 h-4 bg-emerald-500 rounded-full relative"><div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full" /></div> : <div className="w-8 h-4 bg-gray-300 rounded-full relative"><div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full" /></div>}
                     </button>
-                    <button onClick={() => { setView('profile'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><User size={18} className="text-gray-400" /> Edit Profile</button>
-                    <button onClick={() => { setView('pricing'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><CreditCard size={18} className="text-gray-400" /> Upgrade Plan</button>
-                    <button onClick={async () => { await signOut(auth); setView('landing'); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium text-red-600 dark:text-red-400 transition-colors"><LogOut size={18} className="text-red-400" /> Sign Out</button>
+                    <button onClick={() => { setView('profile'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><User size={18} className="text-gray-400" /> Edit Profile</button>
+                    <button onClick={() => { setView('pricing'); setShowSettings(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors"><CreditCard size={18} className="text-gray-400" /> Upgrade Plan</button>
+                    <button onClick={async () => { await signOut(auth); setView('landing'); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium text-red-600 dark:text-red-400 transition-colors"><LogOut size={18} className="text-red-400" /> Sign Out</button>
                   </div>
                 </div>
               )}
@@ -1227,7 +1227,7 @@ export default function NutriGenius() {
         <div className="max-w-5xl mx-auto p-6 space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Calendar Widget */}
-            <div className="lg:col-span-5 bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
+            <div className="lg:col-span-5 bg-white dark:bg-gray-900 rounded-lg p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Calendar size={20} className="text-emerald-500" /> {now.toLocaleString('default', { month: 'long', year: 'numeric' })}
@@ -1260,7 +1260,7 @@ export default function NutriGenius() {
                       }}
                       disabled={!hasPlan}
                       className={`
-                        aspect-square rounded-xl flex flex-col items-center justify-center text-xs relative transition-all duration-200
+                        aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative transition-all duration-200
                         ${hasPlan
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-100 dark:border-emerald-800 hover:scale-105 hover:shadow-md cursor-pointer'
                           : 'text-gray-400 dark:text-gray-600 cursor-default'
@@ -1284,7 +1284,7 @@ export default function NutriGenius() {
             </div>
 
             {/* Budget Hero */}
-            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
+            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-8 text-white shadow-xl relative overflow-hidden flex flex-col justify-between">
               <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
 
               <div className="relative z-10">
@@ -1324,7 +1324,7 @@ export default function NutriGenius() {
 
           {/* Plans Grid */}
           {mealPlans.length === 0 && !generating ? (
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 p-12 text-center">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><ChefHat size={24} /></div>
               <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-1">No meals planned yet</h3>
               <p className="text-gray-500 dark:text-gray-400">Generate your first affordable plan above.</p>
@@ -1335,7 +1335,7 @@ export default function NutriGenius() {
                 <div
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan)} // Trigger the new Analysis View
-                  className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative group cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
+                  className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 relative group cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan.id); }}
@@ -1440,7 +1440,7 @@ export default function NutriGenius() {
           ))}
         </div>
 
-        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
+        <div className="w-full max-w-3xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg shadow-xl p-8 sm:p-12 relative z-10 border border-white/50 dark:border-gray-800/50">
           <button onClick={() => setView('dashboard')} className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft size={20} />
           </button>
@@ -1492,7 +1492,7 @@ export default function NutriGenius() {
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Activity Level</label>
                 <div className="flex gap-2">
                   {ACTIVITIES.map(act => (
-                    <div key={act.id} onClick={() => setSelectedActivity(act.id)} className={`flex-1 cursor-pointer p-3 rounded-xl border text-center transition-all ${selectedActivity === act.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+                    <div key={act.id} onClick={() => setSelectedActivity(act.id)} className={`flex-1 cursor-pointer p-3 rounded-lg border text-center transition-all ${selectedActivity === act.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
                       <act.icon size={16} className="mx-auto mb-1" />
                       <div className="text-xs font-bold">{act.id}</div>
                     </div>
@@ -1502,7 +1502,7 @@ export default function NutriGenius() {
               </div>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl space-y-4 border border-gray-100 dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg space-y-4 border border-gray-100 dark:border-gray-700">
               <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><ChefHat size={18} /> Dietary Preferences</span>
               <div className="flex gap-4">
                 {['Vegan', 'Gluten-Free'].map(d => (
@@ -1584,7 +1584,7 @@ export default function NutriGenius() {
 
     return (
       <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
 
           {/* Header */}
           <div className="bg-gray-100 dark:bg-gray-800 p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
@@ -1602,7 +1602,7 @@ export default function NutriGenius() {
                 <div
                   key={i}
                   onClick={() => setSelectedMeal(meal)}
-                  className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-emerald-500 transition-colors group"
+                  className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-emerald-500 transition-colors group"
                 >
                   <div className="text-xs font-bold text-gray-400 uppercase mb-1">{meal.type}</div>
                   <div className="font-bold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600 mb-1 truncate">{meal.name}</div>
@@ -1612,7 +1612,7 @@ export default function NutriGenius() {
             </div>
 
             {/* AI Analysis Section */}
-            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
               <div className="flex justify-between items-start mb-4">
                 <h4 className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
                   <Sparkles size={18} className="text-emerald-500" /> AI Nutritional Analysis
@@ -1644,7 +1644,7 @@ export default function NutriGenius() {
 
               {!isEditingNote && notes ? (
                 <div className="relative group rotate-1 hover:rotate-0 transition-transform duration-300">
-                  <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-xl shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
+                  <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-100 p-6 rounded-lg shadow-md border border-yellow-200 dark:border-yellow-800/50 min-h-[120px]">
                     <p className="whitespace-pre-wrap font-medium font-handwriting text-lg leading-relaxed">{notes}</p>
                   </div>
                   <div className="absolute top-2 right-2 flex gap-2">
@@ -1662,7 +1662,7 @@ export default function NutriGenius() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="How did you feel today? Any substitutions made?"
-                    className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
+                    className="w-full h-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none shadow-inner"
                   />
                   <div className="mt-3 flex justify-end gap-2">
                     {notes && !isEditingNote && (
@@ -1730,7 +1730,7 @@ export default function NutriGenius() {
 
     return (
       <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
 
           {/* Dynamic Header */}
           <div className={`${getHeaderStyle(selectedMeal.type)} p-6 relative overflow-hidden transition-colors`}>
@@ -1779,7 +1779,7 @@ export default function NutriGenius() {
             </div>
             <div>
               <h4 className="font-bold text-gray-900 dark:text-white mb-3">Instructions</h4>
-              <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-600 dark:text-gray-300 text-sm leading-relaxed border border-gray-100 dark:border-gray-700">
+              <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-lg text-gray-600 dark:text-gray-300 text-sm leading-relaxed border border-gray-100 dark:border-gray-700">
                 {selectedMeal.instructions}
               </div>
             </div>
@@ -1802,3 +1802,5 @@ export default function NutriGenius() {
     </>
   );
 }
+
+
