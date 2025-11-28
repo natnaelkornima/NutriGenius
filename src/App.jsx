@@ -1284,30 +1284,86 @@ export default function NutriGenius() {
               </div>
             </div>
 
-            {/* Budget Hero */}
-            <div className="lg:col-span-7 bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-8 text-white shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
+            {/* Enhanced Budget Dashboard */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Main Budget Card */}
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-6 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-12 opacity-10"><PieChart size={180} /></div>
 
-              <div className="relative z-10">
-                <p className="text-gray-400 font-medium mb-2 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-5xl font-bold tracking-tight">ETB {spent}</span>
-                  <span className="text-xl text-gray-500 font-normal">/ {budget}</span>
+                <div className="relative z-10">
+                  <p className="text-gray-400 font-medium mb-2 flex items-center gap-2"><DollarSign size={16} /> Monthly Budget Usage</p>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-4xl font-bold tracking-tight">ETB {spent}</span>
+                    <span className="text-lg text-gray-500 font-normal">/ {budget}</span>
+                  </div>
+                  <div className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full inline-block mb-4">{100 - Math.round(percent)}% Remaining</div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-4">
+                    <div className="h-3 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+                      <div
+                        className={`h-full transition-all duration-1000 ease-out ${percent > 90 ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full inline-block mb-8">{100 - Math.round(percent)}% Remaining</div>
               </div>
 
-              <div className="relative z-10 w-full">
-                <div className="flex justify-between text-xs text-gray-400 mb-2">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Total Meals */}
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                      <ChefHat size={16} className="text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Meals</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{monthlyPlans.length}</div>
+                  <div className="text-xs text-gray-500 mt-1">Generated</div>
                 </div>
-                <div className="h-4 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
-                  <div
-                    className={`h-full transition-all duration-1000 ease-out ${percent > 90 ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
-                    style={{ width: `${percent}%` }}
-                  />
+
+                {/* Notes Count */}
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <FileText size={16} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Notes</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{monthlyPlans.filter(p => p.notes).length}</div>
+                  <div className="text-xs text-gray-500 mt-1">Written</div>
+                </div>
+
+                {/* Avg Calories */}
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                      <Activity size={16} className="text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Avg Cal</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {monthlyPlans.length > 0 ? Math.round(monthlyPlans.reduce((sum, p) => sum + p.meals.reduce((s, m) => s + m.calories, 0), 0) / monthlyPlans.length) : 0}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">kcal/day</div>
+                </div>
+
+                {/* Avg Score */}
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                      <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 uppercase">AI Score</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {monthlyPlans.filter(p => p.aiAnalysis).length > 0
+                      ? (monthlyPlans.filter(p => p.aiAnalysis).reduce((sum, p) => sum + p.aiAnalysis.score, 0) / monthlyPlans.filter(p => p.aiAnalysis).length).toFixed(1)
+                      : '—'}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">Average</div>
                 </div>
               </div>
             </div>
