@@ -22,7 +22,7 @@
 
 ```
 Key: VITE_GEMINI_API_KEY
-Value: AIzaSyBYbJaGoRcOFPwMgnvRQcLuUe1EuxKpWW0
+Value: YOUR_NEW_API_KEY_HERE
 ```
 
 4. Click **Save**
