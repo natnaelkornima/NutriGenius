@@ -52,13 +52,40 @@ Follow these steps to set up the project locally.
     ```
 
 3.  **Environment Setup**
-    Create a `.env` file in the root directory and add your API keys:
+    
+    Create a `.env` file in the root directory with the following variables:
 
     ```env
+    # Required for AI meal analysis
     VITE_GEMINI_API_KEY=your_google_gemini_api_key_here
+    
+    # Optional: Payment integration (Chapa)
+    VITE_CHAPA_SECRET_KEY=your_chapa_secret_key
+    
+    # Optional: Contact form (EmailJS)
+    VITE_EMAILJS_SERVICE_ID=your_service_id
+    VITE_EMAILJS_TEMPLATE_ID=your_template_id
+    VITE_EMAILJS_PUBLIC_KEY=your_public_key
     ```
 
-    *Note: Firebase configuration is currently embedded in `src/App.jsx`. For a production app, these should also be moved to environment variables.*
+    #### 🔑 Getting API Keys
+
+    **Google Gemini API** (Required for AI features):
+    1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+    2. Sign in with your Google account
+    3. Click "Create API Key"
+    4. Copy the key and paste it as `VITE_GEMINI_API_KEY`
+
+    **Chapa Payment** (Optional):
+    - Sign up at [Chapa](https://chapa.co/) to get your secret key
+    - Use test key (`CHASECK_TEST-...`) for development
+
+    **EmailJS** (Optional):
+    - Create an account at [EmailJS](https://www.emailjs.com/)
+    - Set up a service and template
+    - Copy your service ID, template ID, and public key
+
+    > **⚠️ Important**: Never commit the `.env` file to version control. It's already in `.gitignore` for your security.
 
 4.  **Run the development server**
     ```bash
@@ -75,6 +102,96 @@ Follow these steps to set up the project locally.
 3.  **Generate Plan**: On the dashboard, click "Generate New Plan" to let the AI create a weekly schedule for you.
 4.  **View Details**: Click on any day card to view the "Daily Overview", read AI analysis, and add notes.
 5.  **Track Budget**: Monitor your weekly spending vs. budget in the dashboard header.
+
+## 🚀 Deployment to Netlify
+
+The app is production-ready and can be deployed to Netlify with a few simple steps.
+
+### Prerequisites for Deployment
+
+-   A [Netlify](https://www.netlify.com/) account (free tier works)
+-   Your repository pushed to GitHub/GitLab/Bitbucket
+
+### Step-by-Step Deployment
+
+1.  **Connect Repository**
+    -   Log in to [Netlify](https://app.netlify.com/)
+    -   Click "Add new site" → "Import an existing project"
+    -   Select your Git provider and authorize
+    -   Choose your `nutrigenius` repository
+
+2.  **Build Settings**
+    -   **Build command**: `npm run build`
+    -   **Publish directory**: `dist`
+    -   Click "Deploy site"
+
+3.  **Configure Environment Variables** ⚠️ **Critical Step**
+    
+    The AI analysis and other features will NOT work without these:
+    
+    -   Go to **Site settings** → **Environment variables**
+    -   Click "Add a variable" and add each of the following:
+
+    | Variable Name | Value | Required? |
+    |--------------|-------|-----------|
+    | `VITE_GEMINI_API_KEY` | Your Google Gemini API key | ✅ Yes |
+    | `VITE_CHAPA_SECRET_KEY` | Your Chapa secret key | ❌ Optional |
+    | `VITE_EMAILJS_SERVICE_ID` | Your EmailJS service ID | ❌ Optional |
+    | `VITE_EMAILJS_TEMPLATE_ID` | Your EmailJS template ID | ❌ Optional |
+    | `VITE_EMAILJS_PUBLIC_KEY` | Your EmailJS public key | ❌ Optional |
+
+    -   Click "Save" after adding each variable
+
+4.  **Trigger Rebuild**
+    -   Go to **Deploys** tab
+    -   Click "Trigger deploy" → "Clear cache and deploy site"
+    -   Wait for deployment to complete (~2-3 minutes)
+
+5.  **Verify Deployment**
+    -   Visit your deployed site URL
+    -   Sign up/Login
+    -   Generate a meal plan
+    -   Click "Analyze Nutrition" button
+    -   ✅ If you see an AI score (e.g., "8/10"), it's working!
+    -   ❌ If you see "API Key missing", recheck environment variables
+
+### Troubleshooting Deployment Issues
+
+#### AI Analysis Not Working
+
+**Problem**: "Analyze Nutrition" shows error or "API Key missing"
+
+**Solution**:
+1. Verify `VITE_GEMINI_API_KEY` is set in Netlify environment variables
+2. Ensure you clicked "Trigger deploy" after adding variables
+3. Check browser console (F12) for specific error messages
+4. Verify your Gemini API key is valid at [Google AI Studio](https://aistudio.google.com/)
+
+#### Build Fails
+
+**Problem**: Deployment shows build errors
+
+**Solution**:
+1. Run `npm run build` locally to test
+2. Check if all dependencies are in `package.json` (not just dev dependencies)
+3. Ensure Node.js version compatibility (Netlify uses Node 18 by default)
+
+#### Blank Page After Deployment
+
+**Problem**: Site loads but shows blank screen
+
+**Solution**:
+1. Check browser console for errors
+2. Verify `netlify.toml` redirects are configured (already included)
+3. Clear Netlify cache and redeploy
+
+### Custom Domain (Optional)
+
+-   In Netlify, go to **Domain settings**
+-   Click "Add custom domain"
+-   Follow instructions to configure DNS
+
+
 
 ## 📄 License
 
